@@ -57,6 +57,12 @@ header {
   flex-wrap: wrap;
 }
 
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
 .logo-link {
   padding: var(--spacing-md) 0;
 }
@@ -64,6 +70,30 @@ header {
 .logo {
   height: 60px;
   width: auto;
+}
+
+.site-title-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.site-title {
+  font-size: 1.2rem;
+  color: #C2A43B !important;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.site-tagline {
+  font-size: 0.85rem;
+  color: #ffffff !important;
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.3;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
 }
 
 .nav-menu {
@@ -108,6 +138,19 @@ header {
     gap: var(--spacing-md);
   }
   
+  .logo-section {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .site-title {
+    font-size: 1rem;
+  }
+  
+  .site-tagline {
+    font-size: 0.75rem;
+  }
+  
   .nav-menu {
     flex-wrap: wrap;
     justify-content: center;
@@ -121,22 +164,42 @@ header {
 
 /* Hero Section */
 .hero {
-  background: linear-gradient(135deg, var(--color-primary) 0%, #2a3530 100%);
+  background: linear-gradient(rgba(66, 81, 76, 0.3), rgba(42, 53, 48, 0.4)), url('/hero.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   color: var(--color-white);
   padding: var(--spacing-xl) var(--spacing-md);
   text-align: center;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hero-content h1 {
   font-size: 2.5rem;
   margin-bottom: var(--spacing-md);
   color: var(--color-secondary);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.hero-tagline {
+  font-size: 1.4rem;
+  margin-bottom: var(--spacing-sm);
+  color: #C2A43B;
+  text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+  font-weight: 600;
+  font-style: italic;
 }
 
 .hero-subtitle {
   font-size: 1.3rem;
   margin-bottom: var(--spacing-lg);
-  opacity: 0.9;
+  opacity: 1;
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-weight: 500;
 }
 
 .hero-actions {
@@ -450,6 +513,10 @@ footer {
 @media (max-width: 768px) {
   .hero-content h1 {
     font-size: 1.8rem;
+  }
+  
+  .hero-tagline {
+    font-size: 1.1rem;
   }
   
   .hero-subtitle {

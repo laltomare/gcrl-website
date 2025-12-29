@@ -14,12 +14,20 @@
     "type": "git",
     "url": "git+https://github.com/laltomare/gcrl-website.git"
   },
-  "keywords": ["cloudflare", "workers", "masonic", "lodge"],
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "masonic",
+    "lodge"
+  ],
   "author": "Golden Compasses Research Lodge",
   "license": "ISC",
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251228.0",
     "typescript": "^5.9.3",
     "wrangler": "^4.54.0"
+  },
+  "dependencies": {
+    "otpauth": "^9.4.1"
   }
 }

@@ -37,6 +37,7 @@ export function addSecurityHeaders(response: Response): Response {
 const ALLOWED_ORIGINS = [
   'https://goldencompasses.org',
   'https://www.goldencompasses.org',
+  'https://gcrl-website.lawrence-675.workers.dev',
 ];
 
 export function handleCors(request: Request): Response | null {

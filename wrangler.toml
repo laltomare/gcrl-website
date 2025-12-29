@@ -6,7 +6,7 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "gcrl-documents"
-database_id = "YOUR_D1_DATABASE_ID"  # Created later
+database_id = "3a4b52a3-be84-495b-b8b4-6f0cde5c31a2"
 
 # R2 Storage (for PDF files)
 [[r2_buckets]]

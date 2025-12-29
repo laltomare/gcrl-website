@@ -27,9 +27,15 @@ export function BasePage(title: string, content: string, currentPage: string = '
   <header>
     <nav class="main-nav">
       <div class="nav-container">
-        <a href="/" class="logo-link">
-          <img src="/logo.png" alt="${SITE_NAME}" class="logo">
-        </a>
+        <div class="logo-section">
+          <a href="/" class="logo-link">
+            <img src="/logo.png?v=2" alt="Golden Compasses Logo" class="logo">
+          </a>
+          <div class="site-title-section">
+            <h1 class="site-title">Golden Compasses Research Lodge</h1>
+            <p class="site-tagline">A California Research Lodge "Where Curiosity Meets Passion"</p>
+          </div>
+        </div>
         <ul class="nav-menu">
           <li class="${currentPage === 'home' ? 'active' : ''}"><a href="/">Home</a></li>
           <li class="${currentPage === 'about' ? 'active' : ''}"><a href="/about">About</a></li>
@@ -339,4 +345,553 @@ function escapeHtml(text: string): string {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Admin login page with 2FA support
+export function AdminLoginPage(error: string = ''): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login - ${SITE_NAME}</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .login-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .login-box {
+      background: #2a3a35;
+      padding: 3rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-box h1 {
+      color: #C2A43B !important;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+    }
+    .login-box p {
+      color: #ffffff !important;
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    .form-group label {
+      display: block;
+      color: #ffffff !important;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #4a5a55;
+      border-radius: 4px;
+      background: #1a2a25;
+      color: #ffffff;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #C2A43B;
+      box-shadow: 0 0 0 2px rgba(194, 164, 59, 0.2);
+    }
+    .btn {
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: #C2A43B;
+      color: #1a2a25;
+    }
+    .btn-primary:hover {
+      background: #d4b55a;
+      transform: translateY(-1px);
+    }
+    .error-message {
+      background: rgba(220, 38, 38, 0.2);
+      border: 1px solid #dc2626;
+      color: #fca5a5;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .login-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #4a5a55;
+    }
+    .login-footer a {
+      color: #C2A43B !important;
+      text-decoration: none;
+    }
+    .login-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-box">
+      <h1>Admin Login</h1>
+      <p>Enter your credentials to access the admin dashboard</p>
+      
+      ${error ? `<div class="error-message">${escapeHtml(error)}</div>` : ''}
+      
+      <form id="loginForm" method="POST" action="/admin/verify">
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input 
+            type="password" 
+            id="password" 
+            name="password" 
+            required 
+            autocomplete="current-password"
+            placeholder="Enter your admin password"
+          >
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Continue</button>
+      </form>
+      
+      <div class="login-footer">
+        <p><a href="/">← Back to Website</a></p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const form = document.getElementById('loginForm');
+    form.addEventListener('submit', function(e) {
+      const password = document.getElementById('password').value;
+      
+      if (password.length < 14) {
+        e.preventDefault();
+        alert('Password must be at least 14 characters long.');
+        return false;
+      }
+    });
+  </script>
+</body>
+</html>`;
+}
+
+// 2FA verification page
+export function TwoFactorPage(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Two-Factor Authentication - ${SITE_NAME}</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .login-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .login-box {
+      background: #2a3a35;
+      padding: 3rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-box h1 {
+      color: #C2A43B !important;
+      text-align: center;
+      margin-bottom: 1rem;
+      font-size: 1.5rem;
+    }
+    .login-box p {
+      color: #ffffff !important;
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    .form-group label {
+      display: block;
+      color: #ffffff !important;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #4a5a55;
+      border-radius: 4px;
+      background: #1a2a25;
+      color: #ffffff;
+      font-size: 1.25rem;
+      letter-spacing: 0.25rem;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #C2A43B;
+      box-shadow: 0 0 0 2px rgba(194, 164, 59, 0.2);
+    }
+    .btn {
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: #C2A43B;
+      color: #1a2a25;
+    }
+    .btn-primary:hover {
+      background: #d4b55a;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #C2A43B;
+      border: 1px solid #C2A43B;
+      margin-top: 1rem;
+    }
+    .btn-secondary:hover {
+      background: rgba(194, 164, 59, 0.1);
+    }
+    .error-message {
+      background: rgba(220, 38, 38, 0.2);
+      border: 1px solid #dc2626;
+      color: #fca5a5;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .backup-code-link {
+      text-align: center;
+      margin-top: 1rem;
+    }
+    .backup-code-link a {
+      color: #C2A43B !important;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .backup-code-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-box">
+      <h1>Two-Factor Authentication</h1>
+      <p>Enter the 6-digit code from your authenticator app</p>
+      
+      <div id="errorContainer"></div>
+      
+      <form id="totpForm" method="POST" action="/admin/verify-2fa">
+        <div class="form-group">
+          <label for="code">Authentication Code</label>
+          <input 
+            type="text" 
+            id="code" 
+            name="code" 
+            required 
+            maxlength="6"
+            pattern="[0-9]{6}"
+            placeholder="000000"
+            autocomplete="one-time-code"
+            autofocus
+          >
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Verify</button>
+        
+        <div class="backup-code-link">
+          <a href="#" id="useBackupCode">Use a backup code instead</a>
+        </div>
+      </form>
+      
+      <button class="btn btn-secondary" onclick="window.location.href='/admin/login'">Cancel</button>
+    </div>
+  </div>
+  
+  <script>
+    const codeInput = document.getElementById('code');
+    
+    // Auto-format and submit when 6 digits entered
+    codeInput.addEventListener('input', function(e) {
+      // Remove non-numeric characters
+      this.value = this.value.replace(/[^0-9]/g, '');
+      
+      // Auto-submit when 6 digits entered
+      if (this.value.length === 6) {
+        document.getElementById('totpForm').submit();
+      }
+    });
+    
+    // Handle backup code link
+    document.getElementById('useBackupCode').addEventListener('click', function(e) {
+      e.preventDefault();
+      const backupCode = prompt('Enter your backup code:');
+      if (backupCode) {
+        // Create form to submit backup code
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/verify-2fa';
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'backup_code';
+        input.value = backupCode;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+      }
+    });
+  </script>
+</body>
+</html>`;
+}
+
+// 2FA Setup page with QR code
+export function TwoFactorSetupPage(qrCodeDataUrl: string, secret: string, backupCodes: string[]): string {
+  const formattedCodes = backupCodes.map(code => code.substring(0, 4) + '-' + code.substring(4));
+  
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Two-Factor Authentication - ${SITE_NAME}</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .setup-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+      background: #2a3a35;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    .setup-container h1 {
+      color: #C2A43B !important;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .setup-container h2 {
+      color: #C2A43B !important;
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+    }
+    .setup-container p {
+      color: #ffffff !important;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+    .step {
+      background: rgba(194, 164, 59, 0.1);
+      border: 1px solid #C2A43B;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+    }
+    .step-number {
+      display: inline-block;
+      background: #C2A43B;
+      color: #1a2a25;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      margin-right: 0.5rem;
+    }
+    .qr-container {
+      text-align: center;
+      margin: 2rem 0;
+    }
+    .qr-container img {
+      max-width: 250px;
+      border: 4px solid #ffffff;
+      border-radius: 8px;
+      padding: 1rem;
+      background: #ffffff;
+    }
+    .secret-display {
+      background: #1a2a25;
+      padding: 1rem;
+      border-radius: 4px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 1.1rem;
+      color: #C2A43B;
+      margin: 1rem 0;
+      word-break: break-all;
+    }
+    .backup-codes {
+      background: #1a2a25;
+      padding: 1.5rem;
+      border-radius: 4px;
+      margin: 1rem 0;
+    }
+    .backup-codes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .backup-code {
+      background: #2a3a35;
+      padding: 0.5rem;
+      border-radius: 4px;
+      text-align: center;
+      font-family: monospace;
+      color: #C2A43B;
+      font-size: 0.9rem;
+    }
+    .warning-box {
+      background: rgba(245, 158, 11, 0.2);
+      border: 2px solid #f59e0b;
+      color: #fcd34d;
+      padding: 1rem;
+      border-radius: 4px;
+      margin: 1rem 0;
+    }
+    .btn {
+      padding: 0.75rem 2rem;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin: 0.5rem;
+    }
+    .btn-primary {
+      background: #C2A43B;
+      color: #1a2a25;
+    }
+    .btn-primary:hover {
+      background: #d4b55a;
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #C2A43B;
+      border: 1px solid #C2A43B;
+    }
+    .btn-secondary:hover {
+      background: rgba(194, 164, 59, 0.1);
+    }
+    .button-container {
+      text-align: center;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="setup-container">
+    <h1>Setup Two-Factor Authentication</h1>
+    <p>Two-factor authentication adds an extra layer of security to your admin account. Even if someone obtains your password, they won't be able to access the admin dashboard without the authentication code from your phone.</p>
+    
+    <div class="step">
+      <p><span class="step-number">1</span><strong>Install an Authenticator App</strong></p>
+      <p>If you don't already have one, install a TOTP-compatible authenticator app on your smartphone:</p>
+      <ul>
+        <li><strong>Google Authenticator</strong> (iOS/Android)</li>
+        <li><strong>Authy</strong> (iOS/Android)</li>
+        <li><strong>1Password</strong> (if you're already using it)</li>
+        <li><strong>Microsoft Authenticator</strong> (iOS/Android)</li>
+      </ul>
+    </div>
+    
+    <div class="step">
+      <p><span class="step-number">2</span><strong>Scan the QR Code</strong></p>
+      <p>Open your authenticator app and scan the QR code below:</p>
+      <div class="qr-container">
+        <img src="${qrCodeDataUrl}" alt="QR Code for TOTP Setup">
+      </div>
+      <p>Or enter this code manually:</p>
+      <div class="secret-display">${secret}</div>
+    </div>
+    
+    <div class="step">
+      <p><span class="step-number">3</span><strong>Save Your Backup Codes</strong></p>
+      <p><strong>IMPORTANT:</strong> Save these backup codes in a secure location. You can use them to access your account if you lose your authenticator device.</p>
+      <div class="warning-box">
+        <strong>⚠️ These codes will only be shown ONCE. Save them now!</strong>
+      </div>
+      <div class="backup-codes">
+        <p style="color: #C2A43B; font-weight: bold;">Your Backup Codes:</p>
+        <div class="backup-codes-grid">
+          ${formattedCodes.map(code => `<div class="backup-code">${code}</div>`).join('')}
+        </div>
+      </div>
+    </div>
+    
+    <div class="step">
+      <p><span class="step-number">4</span><strong>Verify Setup</strong></p>
+      <p>Enter the 6-digit code from your authenticator app to complete setup:</p>
+      <form id="verifyForm" method="POST" action="/admin/verify-2fa">
+        <div class="form-group">
+          <input 
+            type="text" 
+            id="code" 
+            name="code" 
+            required 
+            maxlength="6"
+            pattern="[0-9]{6}"
+            placeholder="000000"
+            autocomplete="one-time-code"
+            style="width: 100%; padding: 0.75rem; border: 1px solid #4a5a55; border-radius: 4px; background: #1a2a25; color: #ffffff; font-size: 1.25rem; letter-spacing: 0.25rem; text-align: center;"
+          >
+        </div>
+      </form>
+    </div>
+    
+    <div class="button-container">
+      <button class="btn btn-primary" onclick="document.getElementById('verifyForm').submit()">Enable 2FA</button>
+      <button class="btn btn-secondary" onclick="if(confirm('Are you sure? Skipping 2FA will leave your account less secure.')) window.location.href='/admin/dashboard'">Skip for Now</button>
+    </div>
+  </div>
+  
+  <script>
+    const codeInput = document.getElementById('code');
+    
+    codeInput.addEventListener('input', function(e) {
+      this.value = this.value.replace(/[^0-9]/g, '');
+    });
+  </script>
+</body>
+</html>`;
 }

@@ -43,3 +43,12 @@ CREATE TABLE IF NOT EXISTS security_logs (
 CREATE INDEX IF NOT EXISTS idx_security_logs_timestamp ON security_logs(timestamp);
 CREATE INDEX IF NOT EXISTS idx_security_logs_ip ON security_logs(ip);
 CREATE INDEX IF NOT EXISTS idx_security_logs_event ON security_logs(event);
+
+-- Admin 2FA configuration table
+CREATE TABLE IF NOT EXISTS admin_2fa (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  totp_secret TEXT,
+  totp_enabled INTEGER DEFAULT 0,
+  backup_codes TEXT,
+  setup_date TEXT
+);
