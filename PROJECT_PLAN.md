@@ -84,8 +84,16 @@
 ### LOW PRIORITY
 - 📋 WebAuthn/hardware key support for even stronger security
 - 📋 Additional document formats (beyond PDF)
-- 📋 Document categorization/tags
 - 📋 Search functionality for library
+
+### FUTURE ENHANCEMENTS (After 10-20 Documents)
+- 📋 **Document Categorization System**
+  - Implement category dropdown in admin upload form
+  - Add category filtering to public library page
+  - Display category badges on document listings
+  - Categories to be defined based on actual content uploaded
+  - Batch categorize existing documents once system is implemented
+  - **Decision Made (2025-12-28): Skip categories initially, implement after library has 10-20 real documents**
 
 ---
 
@@ -188,14 +196,20 @@ None currently - all features working as expected!
 ## Next Steps
 1. Continue development with single-admin system
 2. Test document upload/delete functionality
-3. **IMPORTANT: Implement multi-user admin system BEFORE pointing production domain (goldencompasses.org) to Workers**
-4. Add actual Masonic research documents to library
+3. Upload actual Masonic research documents to library (no categorization needed yet)
+4. **IMPORTANT: Implement multi-user admin system BEFORE pointing production domain (goldencompasses.org) to Workers**
 5. Configure WAF rules for additional security
-6. Launch production when ready
+6. **After 10-20 documents:** Implement document categorization system based on actual content
+7. Launch production when ready
 
 ---
 
 ## Version History
-- 2025-12-28: Initial plan created with 2FA implementation complete
+- 2025-12-28 (morning): Initial plan created with 2FA implementation complete
   - Documented single-admin vs multi-user architecture decision
   - Marked multi-user system as HIGH PRIORITY before production
+- 2025-12-28 (evening): Added document categorization decision
+  - Decided to skip categories initially
+  - Will implement categorization after library has 10-20 real documents
+  - Categories will be defined based on actual content uploaded
+  - Batch categorization of existing documents when system is implemented
