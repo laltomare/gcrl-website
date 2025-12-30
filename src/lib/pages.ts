@@ -147,13 +147,14 @@ export function AboutPage(): string {
 export function LibraryPage(documents: any[] = []): string {
   const documentCards = documents.map(doc => `
     <article class="document-card">
-      <h3>${escapeHtml(doc.title)}</h3>
+      <h3><a href="/library/${doc.id}" class="document-title-link">${escapeHtml(doc.title)}</a></h3>
       <p class="document-description">${escapeHtml(doc.description || 'No description available.')}</p>
       <div class="document-meta">
         <span class="document-category">${escapeHtml(doc.category || 'General')}</span>
         <span class="document-date">${new Date(doc.upload_date).toLocaleDateString()}</span>
       </div>
       <p class="document-access">🔒 Full access available to Research Lodge members only</p>
+      <a href="/library/${doc.id}" class="btn btn-secondary">View Document</a>
     </article>
   `).join('');
   
@@ -179,6 +180,208 @@ export function LibraryPage(documents: any[] = []): string {
         </div>
       </div>
     </section>
+  `, 'library');
+}
+
+// Document detail page with password protection
+export function DocumentDetailPage(document: any, error: string = ''): string {
+  const fileSizeKB = Math.round(document.file_size / 1024);
+  
+  return BasePage(document.title, `
+    <section class="page-header">
+      <div class="container">
+        <h1>${escapeHtml(document.title)}</h1>
+        <p class="subtitle">Masonic Research Paper</p>
+      </div>
+    </section>
+    
+    <section class="content-section">
+      <div class="container">
+        <div class="document-detail">
+          <div class="document-info">
+            <h2>Document Information</h2>
+            <p><strong>Description:</strong> ${escapeHtml(document.description || 'No description available.')}</p>
+            <p><strong>Category:</strong> ${escapeHtml(document.category || 'General')}</p>
+            <p><strong>File Size:</strong> ${fileSizeKB} KB</p>
+            <p><strong>Uploaded:</strong> ${new Date(document.upload_date).toLocaleDateString()}</p>
+          </div>
+          
+          <div class="document-access-section">
+            <h2>🔒 Member Access Required</h2>
+            <p>Full access to download this document is available to Golden Compasses Research Lodge members in good standing.</p>
+            
+            ${error ? `<div class="error-message">${escapeHtml(error)}</div>` : ''}
+            
+            <form id="passwordForm" method="POST" action="/library/${document.id}/download">
+              <div class="form-group">
+                <label for="password">Enter Library Password:</label>
+                <input 
+                  type="password" 
+                  id="password" 
+                  name="password" 
+                  required 
+                  autocomplete="current-password"
+                  placeholder="Enter member password"
+                >
+              </div>
+              
+              <button type="submit" class="btn btn-primary">Download Document</button>
+            </form>
+            
+            <p class="password-hint">Members: Use the library password provided by the lodge.</p>
+            <p class="join-reminder">Not a member? <a href="/join">Join Golden Compasses Research Lodge</a></p>
+          </div>
+        </div>
+        
+        <div class="back-link">
+          <a href="/library">← Back to Library</a>
+        </div>
+      </div>
+    </section>
+    
+    <style>
+      .document-detail {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+      
+      @media (max-width: 768px) {
+        .document-detail {
+          grid-template-columns: 1fr;
+        }
+      }
+      
+      .document-info, .document-access-section {
+        background: rgba(194, 164, 59, 0.1);
+        border: 1px solid #C2A43B;
+        border-radius: 8px;
+        padding: 2rem;
+      }
+      
+      .document-info h2, .document-access-section h2 {
+        color: #C2A43B !important;
+        margin-top: 0;
+        margin-bottom: 1rem;
+      }
+      
+      .document-info p {
+        color: #ffffff !important;
+        line-height: 1.8;
+        margin-bottom: 0.75rem;
+      }
+      
+      .document-info strong {
+        color: #C2A43B;
+      }
+      
+      .document-access-section p {
+        color: #ffffff !important;
+        margin-bottom: 1.5rem;
+      }
+      
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+      
+      .form-group label {
+        display: block;
+        color: #ffffff !important;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+      }
+      
+      .form-group input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #4a5a55;
+        border-radius: 4px;
+        background: #1a2a25;
+        color: #ffffff;
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+      
+      .form-group input:focus {
+        outline: none;
+        border-color: #C2A43B;
+        box-shadow: 0 0 0 2px rgba(194, 164, 59, 0.2);
+      }
+      
+      .error-message {
+        background: rgba(220, 38, 38, 0.2);
+        border: 1px solid #dc2626;
+        color: #fca5a5;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+      }
+      
+      .password-hint {
+        color: #C2A43B !important;
+        font-size: 0.9rem;
+        margin-top: 1rem;
+      }
+      
+      .join-reminder {
+        color: #ffffff !important;
+        margin-top: 1rem;
+      }
+      
+      .join-reminder a {
+        color: #C2A43B !important;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      
+      .join-reminder a:hover {
+        text-decoration: underline;
+      }
+      
+      .back-link {
+        text-align: center;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid #4a5a55;
+      }
+      
+      .back-link a {
+        color: #C2A43B !important;
+        text-decoration: none;
+        font-size: 1.1rem;
+      }
+      
+      .back-link a:hover {
+        text-decoration: underline;
+      }
+      
+      .document-title-link {
+        color: #C2A43B !important;
+        text-decoration: none;
+      }
+      
+      .document-title-link:hover {
+        text-decoration: underline;
+      }
+      
+      .btn-secondary {
+        background: transparent;
+        color: #C2A43B;
+        border: 1px solid #C2A43B;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        text-decoration: none;
+        display: inline-block;
+        margin-top: 1rem;
+        transition: all 0.3s;
+      }
+      
+      .btn-secondary:hover {
+        background: rgba(194, 164, 59, 0.1);
+        transform: translateY(-1px);
+      }
+    </style>
   `, 'library');
 }
 
@@ -342,9 +545,14 @@ export function JoinPage(): string {
 
 // Helper function to escape HTML
 function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, (m) => map[m]);
 }
 
 // Admin login page with 2FA support
