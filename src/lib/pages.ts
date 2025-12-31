@@ -17,11 +17,12 @@ export function BasePage(title: string, content: string, currentPage: string = '
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8">  
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title} - ${SITE_NAME}</title>
   <meta name="description" content="${SITE_DESCRIPTION}">
-  <link rel="stylesheet" href="/styles.css">
+  <meta name="theme-color" content="#C2A43B">
+  <link rel="stylesheet" href="/styles.css?v=18">
 </head>
 <body>
   <header>
@@ -79,7 +80,6 @@ export function HomePage(): string {
         </div>
       </div>
     </section>
-    
     <section class="content-section">
       <div class="container">
         <h2>Our Mission</h2>
@@ -429,9 +429,9 @@ export function ContactPage(): string {
         <div class="contact-grid">
           <div class="contact-info">
             <h2>Meeting Information</h2>
-            <p><strong>When:</strong> Third Saturday of January, March, May, September, and November</p>
-            <p><strong>Time:</strong> 9:30 AM - Breakfast, 10:30 AM - Meeting</p>
-            <p><strong>Location:</strong> Scottish Rite Center, 6191 Lusk Blvd, San Diego, CA 92121</p>
+            <p><strong>When:</strong> First Tuesday of the second month of each quarter at 7:00 PM</p>
+            <p><strong>2026 Meeting Dates:</strong> February 3rd, May 5th, August 4th, November 3rd</p>
+            <p><strong>Location:</strong> Folsom Masonic Center, 1000 Duchow Way, Folsom, CA 95630</p>
             
             <h2>Get in Touch</h2>
             <p>For more information about Golden Compasses Research Lodge or membership inquiries, please use the form below or contact us at:</p>

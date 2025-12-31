@@ -99,8 +99,18 @@ header {
 .nav-menu {
   display: flex;
   list-style: none;
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
   gap: var(--spacing-lg);
   align-items: center;
+}
+
+.nav-menu li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  list-style-type: none;
 }
 
 .nav-menu a {
@@ -131,36 +141,7 @@ header {
   background: #d4b84f !important;
 }
 
-/* Mobile Navigation */
-@media (max-width: 768px) {
-  .nav-container {
-    flex-direction: column;
-    gap: var(--spacing-md);
-  }
-  
-  .logo-section {
-    flex-direction: row;
-    align-items: center;
-  }
-  
-  .site-title {
-    font-size: 1rem;
-  }
-  
-  .site-tagline {
-    font-size: 0.75rem;
-  }
-  
-  .nav-menu {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: var(--spacing-sm);
-  }
-  
-  .nav-menu li {
-    font-size: 0.9rem;
-  }
-}
+
 
 /* Hero Section */
 .hero {
