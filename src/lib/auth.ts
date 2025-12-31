@@ -1,3 +1,34 @@
+/**
+ * Authentication and Security Functions
+ * ===================================
+ * 
+ * Purpose: Handle authentication, rate limiting, and security logging
+ * 
+ * Key Features:
+ * - Password validation with strength requirements
+ * - Rate limiting for sensitive operations (login, downloads)
+ * - IP-based tracking with in-memory storage
+ * - Security event logging to D1 database
+ * - Token verification for admin and library access
+ * 
+ * Security Model:
+ * - Admin password: 14+ chars, 3 of 4 character types
+ * - Rate limiting: 5 attempts per 15 minutes (default)
+ * - Download limiting: 10 attempts per hour
+ * - All security events logged with IP, timestamp, user agent
+ * 
+ * Functions:
+ * - validatePassword(): Check password strength
+ * - verifyToken(): Verify admin or library password
+ * - checkRateLimit(): Enforce rate limits per IP
+ * - getClientIP(): Extract client IP from request headers
+ * - logSecurityEvent(): Audit log for security-relevant events
+ * 
+ * Author: Lawrence Altomare
+ * Created: December 2025
+ * Last Modified: December 31, 2025
+ */
+
 import { Env } from './types';
 
 // Constants for password validation

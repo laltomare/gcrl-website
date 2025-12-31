@@ -1,3 +1,35 @@
+/**
+ * HTTP Security Headers and CORS Configuration
+ * ==========================================
+ * 
+ * Purpose: Apply security headers to all HTTP responses and handle CORS
+ * 
+ * Security Headers Implemented:
+ * - X-Frame-Options: DENY - Prevent clickjacking attacks
+ * - X-Content-Type-Options: nosniff - Prevent MIME sniffing
+ * - X-XSS-Protection: Enable browser XSS filter
+ * - Referrer-Policy: Control referrer information leakage
+ * - Content-Security-Policy: Restrict resource loading sources
+ * - Strict-Transport-Security: Enforce HTTPS connections
+ * 
+ * CORS Policy:
+ * - Allows requests from goldencompasses.org and subdomains
+ * - Allows requests from Workers.dev testing domain
+ * - Blocks all other cross-origin requests
+ * 
+ * Usage:
+ * All responses should be wrapped with addSecurityHeaders()
+ * before being returned to the client.
+ * 
+ * Example:
+ * return addSecurityHeaders(new Response(html, {
+ *   headers: { 'Content-Type': 'text/html' }
+ * }));
+ * 
+ * Author: Lawrence Altomare
+ * Created: December 2025
+ */
+
 export const SECURITY_HEADERS = {
   // Prevent clickjacking
   'X-Frame-Options': 'DENY',

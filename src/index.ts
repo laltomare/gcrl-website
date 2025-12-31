@@ -1,3 +1,45 @@
+/**
+ * Golden Compasses Research Lodge - Main Entry Point
+ * ================================================
+ * 
+ * Purpose: Cloudflare Workers request router for the GCRL website
+ * 
+ * Architecture Overview:
+ * - Routes incoming HTTP requests to appropriate handlers
+ * - Serves static assets from Cloudflare R2 storage
+ * - Manages authentication (admin password + TOTP 2FA)
+ * - Handles document upload/download with security controls
+ * - Processes form submissions (contact, membership requests)
+ * - Implements rate limiting and security logging
+ * 
+ * Technology Stack:
+ * - Runtime: Cloudflare Workers (serverless edge computing)
+ * - Database: Cloudflare D1 (SQLite)
+ * - Storage: Cloudflare R2 (object storage)
+ * - Language: TypeScript
+ * 
+ * Security Features:
+ * - Rate limiting (5 attempts per 15 minutes for sensitive operations)
+ * - Input sanitization (XSS prevention)
+ * - Security headers (CSP, HSTS, X-Frame-Options, etc.)
+ * - Two-factor authentication (TOTP) for admin access
+ * - Audit logging for all security events
+ * 
+ * File Organization:
+ * - /styles.css - Main stylesheet
+ * - /logo.png, /hero.jpg, /background.jpg - Static images
+ * - /manifest.json, /sw.js, /icon-*.png - PWA assets (deferred)
+ * - /api/* - API endpoints (forms, downloads)
+ * - /admin/* - Admin dashboard routes
+ * - /* - Public pages (Home, About, Library, Links, Contact, Join)
+ * 
+ * Author: Lawrence Altomare
+ * Created: December 2025
+ * Last Modified: December 31, 2025 (v19 - Navigation fix)
+ * 
+ * @see https://developers.cloudflare.com/workers/
+ */
+
 import { Env } from './types';
 import { HTML } from './lib/pages';
 import { HomePage, AboutPage, LibraryPage, DocumentDetailPage, LinksPage, ContactPage, JoinPage, AdminLoginPage, TwoFactorPage, TwoFactorSetupPage } from './lib/pages';
@@ -33,6 +75,39 @@ export default {
           return addSecurityHeaders(new Response(asset.body, {
             headers: { 'Content-Type': contentType }
           }));
+        }
+      }
+
+      // Serve PWA manifest
+      if (path === '/manifest.json') {
+        const manifest = await env.R2.get('manifest.json');
+        if (manifest) {
+          return new Response(manifest.body, {
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      // Serve service worker
+      if (path === '/sw.js') {
+        const sw = await env.R2.get('sw.js');
+        if (sw) {
+          return new Response(sw.body, {
+            headers: { 
+              'Content-Type': 'application/javascript',
+              'Service-Worker-Allowed': '/'
+            }
+          });
+        }
+      }
+
+      // Serve PWA icons
+      if (path === '/icon-192.png' || path === '/icon-512.png') {
+        const icon = await env.R2.get(path.substring(1));
+        if (icon) {
+          return new Response(icon.body, {
+            headers: { 'Content-Type': 'image/png' }
+          });
         }
       }
 

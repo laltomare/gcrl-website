@@ -1,3 +1,41 @@
+/**
+ * HTML Page Generators
+ * ====================
+ * 
+ * Purpose: Generate HTML for all public pages and admin interface
+ * 
+ * Pages Generated:
+ * Public Pages:
+ * - HomePage(): Landing page with hero banner and features
+ * - AboutPage(): Lodge information and purpose
+ * - LibraryPage(): Public catalog of research papers
+ * - DocumentDetailPage(): Individual document view with password prompt
+ * - LinksPage(): Masonic resources and research lodges
+ * - ContactPage(): Contact form and meeting information
+ * - JoinPage(): Membership request form
+ * 
+ * Admin Pages:
+ * - AdminLoginPage(): Password entry for admin access
+ * - TwoFactorPage(): TOTP code verification
+ * - TwoFactorSetupPage(): QR code and backup codes for 2FA setup
+ * 
+ * Architecture:
+ * - BasePage(): Shared layout with header, nav, footer
+ * - All pages use consistent styling and navigation
+ * - HTML is sanitized to prevent XSS attacks
+ * - Responsive design (mobile-friendly)
+ * 
+ * Security Considerations:
+ * - No user input is directly rendered without sanitization
+ * - Admin pages protected by password + 2FA
+ * - Library downloads require authentication
+ * - All forms use POST to prevent CSRF
+ * 
+ * Author: Lawrence Altomare
+ * Created: December 2025
+ * Last Modified: December 31, 2025 (v19 - Clean navigation, no hamburger)
+ */
+
 import { Env } from './types';
 
 // Site constants
@@ -22,7 +60,7 @@ export function BasePage(title: string, content: string, currentPage: string = '
   <title>${title} - ${SITE_NAME}</title>
   <meta name="description" content="${SITE_DESCRIPTION}">
   <meta name="theme-color" content="#C2A43B">
-  <link rel="stylesheet" href="/styles.css?v=18">
+  <link rel="stylesheet" href="/styles.css?v=19">
 </head>
 <body>
   <header>
