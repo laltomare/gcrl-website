@@ -402,6 +402,28 @@ You'll know everything is working when:
 
 ---
 
+## 📱 Future Enhancements
+
+### Progressive Web App (PWA) - Deferred
+**Status:** Ready for future deployment when user requests testing
+**Decision:** Removed during mobile navigation troubleshooting (Dec 30, 2025)
+
+**To Deploy PWA Later:**
+- [ ] Re-add PWA manifest.json to public/
+- [ ] Re-add service worker registration to pages.ts
+- [ ] Re-add PWA icons (icon-192.png, icon-512.png)
+- [ ] Test PWA installation on mobile devices
+- [ ] Verify offline functionality
+- [ ] Test caching behavior
+- [ ] Deploy and monitor for any navigation artifacts
+
+**Current State:** Site uses simple, clean navigation without mobile menu toggle. Responsive design works naturally for all sections.
+
+**Note:** PWA was temporarily removed to troubleshoot mobile navigation artifacts. The functionality is preserved in source files and can be re-added when ready for testing.
+
+---
+
 **Created:** December 28, 2025  
-**Last Updated:** December 28, 2025  
-**Status:** Ready for Deployment
+**Last Updated:** December 30, 2025  
+**Status:** ✅ **LIVE** - Deployed to Cloudflare Workers
+**Version:** v18 (Clean navigation, no hamburger menu)
