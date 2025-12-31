@@ -8,7 +8,7 @@ A modern, secure website built with Cloudflare Workers, D1 database, and R2 stor
 - **Two-Tier Library Access**: Public viewing, member-only downloads
 - **Admin Dashboard**: Document management, membership request tracking
 - **Security Hardened**: Rate limiting, input sanitization, security headers
-- **Responsive Design**: Mobile-friendly matching goldencompasses.org design
+- **Responsive Design**: Mobile-friendly with clean navigation that wraps naturally
 
 ## Tech Stack
 
