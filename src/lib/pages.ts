@@ -1336,8 +1336,8 @@ export function ThankYouPage(type: 'contact' | 'join'): string {
                    📋 We've recorded your information in our system<br>
                    📞 You'll receive a response within 1-2 business days</p>`
               : `<p style="margin-top: 0.5rem;">📋 Your membership request has been submitted<br>
-                   📧 The Lodge Secretary will review your application<br>
-                   📞 You'll be contacted with information about the next steps<br>
+                   📧 The Lodge Secretary will contact you soon<br>
+                   📞 You'll receive information about the next steps<br>
                    📖 In the meantime, feel free to browse our research library</p>`
             }
           </div>
