@@ -1,0 +1,51 @@
+{
+  "page": "about",
+  "title": "About - Golden Compasses Research Lodge",
+  "banner_text": "Golden Compasses\n                        ​Research Lodge History",
+  "content_sections": [
+    "Coming soon"
+  ],
+  "footer_text": "Follow us on Facebook - \n\n\n\n\n\n\n\n\n©  Golden Compasses Research Lodge No. 1777. All rights reserved. 1777 Duchow Way, Folsom, CA 95777\n                          Proudly Powered by Calpixel Studios",
+  "forms": [],
+  "images": [
+    {
+      "src": "/uploads/1/6/7/0/16704092/1397430057.png",
+      "alt": ""
+    }
+  ],
+  "links": [
+    {
+      "text": "Home",
+      "href": "/"
+    },
+    {
+      "text": "About",
+      "href": "/about.html"
+    },
+    {
+      "text": "Library",
+      "href": "/library.html"
+    },
+    {
+      "text": "Members",
+      "href": "/members.html"
+    },
+    {
+      "text": "News",
+      "href": "/news.html"
+    },
+    {
+      "text": "Calendar",
+      "href": "/calendar.html"
+    },
+    {
+      "text": "Contact",
+      "href": "/contact.html"
+    },
+    {
+      "text": "Pay Dues",
+      "href": "/pay-dues1.html"
+    }
+  ],
+  "youtube_embeds": []
+}

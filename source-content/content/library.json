@@ -1,0 +1,59 @@
+{
+  "page": "library",
+  "title": "Library - Golden Compasses Research Lodge",
+  "banner_text": "",
+  "content_sections": [
+    "Public Library"
+  ],
+  "footer_text": "Follow us on Facebook - \n\n\n\n\n\n\n\n\n©  Golden Compasses Research Lodge No. 1777. All rights reserved. 1777 Duchow Way, Folsom, CA 95777\n                          Proudly Powered by Paul Cary Technologies",
+  "forms": [],
+  "images": [
+    {
+      "src": "/uploads/1/6/7/0/16704092/1397430057.png",
+      "alt": ""
+    },
+    {
+      "src": "//www.weebly.com/weebly/images/file_icons/pdf.png",
+      "alt": ""
+    },
+    {
+      "src": "//www.weebly.com/weebly/images/file_icons/rtf.png",
+      "alt": ""
+    }
+  ],
+  "links": [
+    {
+      "text": "Home",
+      "href": "/"
+    },
+    {
+      "text": "About",
+      "href": "/about.html"
+    },
+    {
+      "text": "Library",
+      "href": "/library.html"
+    },
+    {
+      "text": "Members",
+      "href": "/members.html"
+    },
+    {
+      "text": "News",
+      "href": "/news.html"
+    },
+    {
+      "text": "Calendar",
+      "href": "/calendar.html"
+    },
+    {
+      "text": "Contact",
+      "href": "/contact.html"
+    },
+    {
+      "text": "Pay Dues",
+      "href": "/pay-dues1.html"
+    }
+  ],
+  "youtube_embeds": []
+}

@@ -9,6 +9,8 @@ export interface Env {
   ENVIRONMENT: string;
   SITE_NAME: string;
   SITE_URL: string;
+  SECRETARY_EMAIL: string; // Email address for form submission notifications
+  RESEND_API_KEY: string; // Resend API key for sending emails
   
   // Secrets (set via wrangler secret put)
   ADMIN_PASSWORD: string;

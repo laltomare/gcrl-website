@@ -98,8 +98,8 @@ header {
 
 .nav-menu {
   display: flex;
-  list-style: none;
-  list-style-type: none;
+  list-style: none !important;
+  list-style-type: none !important;
   margin: 0;
   padding: 0;
   gap: var(--spacing-lg);
@@ -109,8 +109,17 @@ header {
 .nav-menu li {
   margin: 0;
   padding: 0;
-  list-style: none;
-  list-style-type: none;
+  list-style: none !important;
+  list-style-type: none !important;
+  list-style-position: outside !important;
+}
+
+.nav-menu li::before {
+  content: none !important;
+}
+
+.nav-menu li::marker {
+  content: none !important;
 }
 
 .nav-menu a {

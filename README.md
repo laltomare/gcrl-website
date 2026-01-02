@@ -148,6 +148,13 @@ This starts a local development server at `http://localhost:8787`
 
 ```
 gcrl-website/
+├── docs/                 # 📚 Documentation folder
+│   ├── FILE-ARCHITECTURE-GUIDE.md    # Print-friendly file architecture guide
+│   ├── ARCHITECTURE.md              # Complete system architecture
+│   ├── CONTRIBUTING.md              # Development workflow & coding standards
+│   ├── PROJECT_PLAN.md              # Project timeline & milestones
+│   ├── DEPLOYMENT-CHECKLIST.md      # Step-by-step deployment guide
+│   └── SOURCE-FILES.md              # Source content inventory
 ├── src/
 │   ├── index.ts          # Main entry point
 │   ├── types.ts          # TypeScript interfaces
@@ -163,6 +170,18 @@ gcrl-website/
 ├── tsconfig.json         # TypeScript configuration
 └── package.json          # Node dependencies
 ```
+
+## 📚 Documentation
+
+### Quick Reference (Start Here)
+- **[docs/FILE-ARCHITECTURE-GUIDE.md](docs/FILE-ARCHITECTURE-GUIDE.md)** - Print-friendly guide to how files fit together
+
+### In-Depth Documentation
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Complete system architecture with diagrams
+- **[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)** - Development workflow and coding standards
+- **[docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)** - Project timeline and milestones
+- **[docs/DEPLOYMENT-CHECKLIST.md](docs/DEPLOYMENT-CHECKLIST.md)** - Step-by-step deployment guide
+- **[docs/SOURCE-FILES.md](docs/SOURCE-FILES.md)** - Source content inventory
 
 ## Security Features
 
@@ -200,6 +219,26 @@ wrangler d1 execute gcrl-documents --command "SELECT * FROM membership_requests 
 - Rotate passwords (optional but recommended)
 - Review and update WAF rules
 - Audit admin access logs
+
+### ⚠️ IMPORTANT: Update Secretary Email
+
+**TODO**: When you receive Bill's secretary's email address, update it in `wrangler.toml`:
+
+```toml
+# Line 21 in wrangler.toml
+SECRETARY_EMAIL = "lawrence@altomare.org" # TODO: Update to Bill's secretary email when available
+```
+
+**Steps to update:**
+1. Open `wrangler.toml`
+2. Find line 21: `SECRETARY_EMAIL = "lawrence@altomare.org"`
+3. Replace `lawrence@altomare.org` with Bill's secretary's email
+4. Save the file
+5. Deploy: `npm run deploy`
+
+**Current email destination**: lawrence@altomare.org (placeholder)
+
+This ensures form submissions (contact forms, membership requests) are emailed to the correct person.
 
 ### Emergency Procedures
 

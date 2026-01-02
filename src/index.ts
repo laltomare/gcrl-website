@@ -42,11 +42,42 @@
 
 import { Env } from './types';
 import { HTML } from './lib/pages';
-import { HomePage, AboutPage, LibraryPage, DocumentDetailPage, LinksPage, ContactPage, JoinPage, AdminLoginPage, TwoFactorPage, TwoFactorSetupPage } from './lib/pages';
+import { HomePage, AboutPage, LibraryPage, DocumentDetailPage, LinksPage, ContactPage, JoinPage, AdminLoginPage, TwoFactorPage, TwoFactorSetupPage, ThankYouPage } from './lib/pages';
 import { addSecurityHeaders, handleCors } from './lib/headers';
 import { getClientIP, checkRateLimit, verifyToken, logSecurityEvent } from './lib/auth';
 import { sanitizeInput } from './lib/sanitize';
 import { generateTOTPSecret, generateTOTPURI, verifyTOTP, generateBackupCodes, isValidBackupCode, formatBackupCode } from './lib/totp';
+
+// Email sending function using Resend
+async function sendEmail(env: Env, to: string, subject: string, content: string): Promise<boolean> {
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: 'Golden Compasses Research Lodge <onboarding@resend.dev>',
+        to: [to],
+        subject: subject,
+        text: content,
+      }),
+    });
+
+    if (response.ok) {
+      console.log(`Email sent successfully to ${to}`);
+      return true;
+    } else {
+      const errorText = await response.text();
+      console.error(`Failed to send email to ${to}: ${response.status} ${errorText}`);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return false;
+  }
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -233,6 +264,16 @@ export default {
         return addSecurityHeaders(HTML`${JoinPage()}`);
       }
 
+      // Thank You page for form submissions
+      if (path === '/thank-you') {
+        const type = url.searchParams.get('type');
+        if (type === 'contact' || type === 'join') {
+          return addSecurityHeaders(HTML`${ThankYouPage(type as 'contact' | 'join')}`);
+        }
+        // Default to contact page if no type specified
+        return addSecurityHeaders(HTML`${ThankYouPage('contact')}`);
+      }
+
       // 404 Not Found
       return addSecurityHeaders(new Response('Not Found', { status: 404 }));
 
@@ -279,11 +320,32 @@ async function handleApiRoute(request: Request, env: Env, url: URL): Promise<Res
 
       await logSecurityEvent(env, 'CONTACT_SUBMISSION', request, `From: ${name} (${email})`);
 
-      return new Response(JSON.stringify({ success: true, message: 'Thank you for your message!' }), {
+      // Send email notification
+      const emailContent = `You have received a new contact form submission from the Golden Compasses website.
+
+CONTACT INFORMATION:
+---------------------
+Name: ${name}
+Email: ${email}
+Subject: ${subject}
+
+MESSAGE:
+--------
+${message}
+
+SUBMITTED: ${new Date().toLocaleString()}
+
+---
+View this submission in the admin dashboard: ${env.SITE_URL}/admin`;
+
+      await sendEmail(env, env.SECRETARY_EMAIL, '🔔 New Contact Form Submission - Golden Compasses Lodge', emailContent);
+
+      return new Response(JSON.stringify({ success: true, redirect: '/thank-you?type=contact' }), {
         headers: { 'Content-Type': 'application/json' }
       });
     } catch (error) {
-      return new Response(JSON.stringify({ error: 'Invalid request' }), {
+      console.error('Contact form error:', error);
+      return new Response(JSON.stringify({ error: 'Invalid request', details: error.message }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -322,9 +384,33 @@ async function handleApiRoute(request: Request, env: Env, url: URL): Promise<Res
 
       await logSecurityEvent(env, 'MEMBERSHIP_REQUEST', request, `From: ${name} (${email})`);
 
+      // Send email notification
+      const emailContent = `You have received a new membership request from the Golden Compasses website.
+
+CONTACT INFORMATION:
+---------------------
+Name: ${name}
+Email: ${email}
+Phone: ${phone || 'Not provided'}
+
+AREAS OF INTEREST:
+------------------
+${interests || 'Not specified'}
+
+ADDITIONAL MESSAGE:
+-------------------
+${message || 'No additional message provided.'}
+
+SUBMITTED: ${new Date().toLocaleString()}
+
+---
+View this submission in the admin dashboard: ${env.SITE_URL}/admin`;
+
+      await sendEmail(env, env.SECRETARY_EMAIL, '🎉 New Membership Request - Golden Compasses Lodge', emailContent);
+
       return new Response(JSON.stringify({ 
         success: true, 
-        message: 'Thank you for your interest! We will contact you soon.' 
+        redirect: '/thank-you?type=join'
       }), {
         headers: { 'Content-Type': 'application/json' }
       });
