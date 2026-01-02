@@ -19,4 +19,5 @@ ENVIRONMENT = "production"
 SITE_NAME = "Golden Compasses Research Lodge"
 SITE_URL = "https://goldencompasses.org"
 SECRETARY_EMAIL = "lawrence@altomare.org" # TODO: Update to Bill's secretary email when available
-RESEND_API_KEY = "***REMOVED***"
+# RESEND_API_KEY is set via: wrangler secret put RESEND_API_KEY
+# Never commit API keys to git!
