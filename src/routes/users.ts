@@ -34,10 +34,10 @@ import {
   getUserById, 
   listUsers, 
   updateUser, 
-  deleteUser,
-  getUserSessions
+  deleteUser
 } from '../lib/users';
 import {
+  getUserSessions,
   deleteUserSessions,
   deleteSession
 } from '../lib/user-sessions';
