@@ -48,3 +48,68 @@ export interface AuthContext {
   isMember: boolean;
   error?: string;
 }
+
+/**
+ * User roles in the system
+ * Roles have hierarchical permissions for access control
+ */
+export type UserRole = 'admin' | 'secretary' | 'member' | 'guest';
+
+/**
+ * User record from the database
+ * Represents a lodge member with access to the system
+ */
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  created_at: string;
+  updated_at: string;
+  last_login: string | null;
+  is_active: boolean;
+}
+
+/**
+ * Input for creating a new user
+ * All fields required except role (defaults to 'member')
+ */
+export interface CreateUserInput {
+  email: string;
+  name: string;
+  role?: UserRole;
+}
+
+/**
+ * Input for updating an existing user
+ * All fields optional - only provided fields will be updated
+ */
+export interface UpdateUserInput {
+  email?: string;
+  name?: string;
+  role?: UserRole;
+  is_active?: boolean;
+}
+
+/**
+ * User session record
+ * Represents an active user authentication session
+ */
+export interface UserSession {
+  id: string;
+  user_id: string;
+  token: string;
+  expires_at: string;
+  created_at: string;
+}
+
+/**
+ * Query options for listing users
+ * Supports filtering and pagination
+ */
+export interface UserListOptions {
+  role?: UserRole;
+  is_active?: boolean;
+  limit?: number;
+  offset?: number;
+}

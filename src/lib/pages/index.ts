@@ -15,3 +15,11 @@ export { LinksPage } from './links';
 export { ContactPage } from './contact';
 export { JoinPage } from './join';
 export { ThankYouPage } from './thank-you';
+
+// User Management Pages
+export { 
+  UsersListPage, 
+  UserDetailPage, 
+  CreateUserFormPage, 
+  EditUserFormPage 
+} from './users';

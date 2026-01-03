@@ -52,6 +52,7 @@ import publicRoutes from './routes/public';
 import apiRoutes from './routes/api';
 import adminRoutes from './routes/admin';
 import downloadRoutes from './routes/download';
+import * as userRoutes from './routes/users';
 
 // Email sending function using Resend
 async function sendEmail(env: Env, to: string, subject: string, content: string): Promise<boolean> {
@@ -1105,7 +1106,74 @@ async function handleAdminRoute(
     }
   }
 
+  // ========================================
+  // USER MANAGEMENT ROUTES
+  // ========================================
 
+  // List users (GET /admin/users)
+  if (path === '/admin/users' && request.method === 'GET') {
+    return await userRoutes.handleUsersList(request, env);
+  }
+
+  // User detail page (GET /admin/users/:id)
+  if (path.startsWith('/admin/users/') && path.match(/^\/admin\/users\/[^/]+$/) && request.method === 'GET') {
+    const userId = path.split('/').pop();
+    return await userRoutes.handleUserDetail(request, env, userId!);
+  }
+
+  // Create user form (GET /admin/users/new)
+  if (path === '/admin/users/new' && request.method === 'GET') {
+    return await userRoutes.handleCreateUserForm();
+  }
+
+  // Create user (POST /admin/users)
+  if (path === '/admin/users' && request.method === 'POST') {
+    return await userRoutes.handleCreateUser(request, env);
+  }
+
+  // Edit user form (GET /admin/users/:id/edit)
+  if (path.startsWith('/admin/users/') && path.endsWith('/edit') && request.method === 'GET') {
+    const userId = path.split('/')[3];
+    return await userRoutes.handleEditUserForm(request, env, userId);
+  }
+
+  // Update user (POST /admin/users/:id)
+  if (path.startsWith('/admin/users/') && !path.includes('/edit') && !path.includes('/delete') && !path.includes('/activate') && !path.includes('/deactivate') && !path.includes('/sessions') && request.method === 'POST') {
+    const userId = path.split('/').pop();
+    return await userRoutes.handleUpdateUser(request, env, userId!);
+  }
+
+  // Delete user (POST /admin/users/:id/delete)
+  if (path.startsWith('/admin/users/') && path.endsWith('/delete') && request.method === 'POST') {
+    const userId = path.split('/')[3];
+    return await userRoutes.handleDeleteUser(request, env, userId);
+  }
+
+  // Activate user (POST /admin/users/:id/activate)
+  if (path.startsWith('/admin/users/') && path.endsWith('/activate') && request.method === 'POST') {
+    const userId = path.split('/')[3];
+    return await userRoutes.handleActivateUser(request, env, userId);
+  }
+
+  // Deactivate user (POST /admin/users/:id/deactivate)
+  if (path.startsWith('/admin/users/') && path.endsWith('/deactivate') && request.method === 'POST') {
+    const userId = path.split('/')[3];
+    return await userRoutes.handleDeactivateUser(request, env, userId);
+  }
+
+  // Revoke session (POST /admin/users/:id/sessions/:sessionId/delete)
+  if (path.startsWith('/admin/users/') && path.includes('/sessions/') && path.endsWith('/delete') && request.method === 'POST') {
+    const parts = path.split('/');
+    const userId = parts[3];
+    const sessionId = parts[5];
+    return await userRoutes.handleRevokeSession(request, env, userId, sessionId);
+  }
+
+  // Revoke all sessions (POST /admin/users/:id/sessions/delete-all)
+  if (path.startsWith('/admin/users/') && path.endsWith('/sessions/delete-all') && request.method === 'POST') {
+    const userId = path.split('/')[3];
+    return await userRoutes.handleRevokeAllSessions(request, env, userId);
+  }
 
   return new Response('Not found', { status: 404 });
 }
