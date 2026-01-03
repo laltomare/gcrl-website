@@ -1645,6 +1645,10 @@ export function AdminDashboardPage(): string {
           <div class="stat-number" id="totalCount">0</div>
           <div>Total Requests</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-number" id="userCount">0</div>
+          <div>Users</div>
+        </div>
       </div>
       
       <div class="dashboard-grid">
@@ -1681,6 +1685,12 @@ export function AdminDashboardPage(): string {
             <thead><tr><th>Date</th><th>Title</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="eventsList"></tbody>
           </table>
+        </div>
+        
+        <div class="dashboard-section">
+          <h2>👥 User Management</h2>
+          <button class="btn-action btn-enable" onclick="window.location.href='/admin/users'" style="margin-bottom: 1rem;">Manage Users</button>
+          <div id="usersSummary" style="margin-top: 1rem;"></div>
         </div>
       </div>
       
