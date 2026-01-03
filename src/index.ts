@@ -42,7 +42,8 @@
 
 import { Env } from './types';
 import { HTML } from './lib/pages';
-import { HomePage, AboutPage, LibraryPage, DocumentDetailPage, LinksPage, ContactPage, JoinPage, AdminLoginPage, AdminDashboardPage, TwoFactorPage, TwoFactorSetupPage, ThankYouPage } from './lib/pages';
+import { HomePage, AboutPage, LibraryPage, DocumentDetailPage, LinksPage, ContactPage, JoinPage, ThankYouPage } from './lib/pages/index';
+import { AdminLoginPage, AdminDashboardPage, TwoFactorPage, TwoFactorSetupPage } from './lib/pages';
 import { addSecurityHeaders, addDevModeHeaders, handleCors } from './lib/headers';
 import { getClientIP, checkRateLimit, verifyToken, logSecurityEvent } from './lib/auth';
 import { sanitizeInput } from './lib/sanitize';
