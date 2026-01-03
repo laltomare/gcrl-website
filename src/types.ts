@@ -52,8 +52,12 @@ export interface AuthContext {
 /**
  * User roles in the system
  * Roles have hierarchical permissions for access control
+ * 
+ * super_admin: Can manage admin accounts, full system access
+ * admin: Can manage members and content, but not other admins
+ * member: Can download member-only documents, view extended metadata
  */
-export type UserRole = 'admin' | 'secretary' | 'member' | 'guest';
+export type UserRole = 'super_admin' | 'admin' | 'member';
 
 /**
  * User record from the database

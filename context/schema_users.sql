@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   last_login DATETIME,
   is_active BOOLEAN DEFAULT 1,
-  CHECK (role IN ('admin', 'secretary', 'member', 'guest'))
+  CHECK (role IN ('super_admin', 'admin', 'member'))
 );
 
 -- Create indexes for users

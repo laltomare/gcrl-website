@@ -40,7 +40,7 @@ export async function createUser(db: D1Database, input: CreateUserInput): Promis
   const role = input.role || 'member';
 
   // Validate role
-  const validRoles: UserRole[] = ['admin', 'secretary', 'member', 'guest'];
+  const validRoles: UserRole[] = ['super_admin', 'admin', 'member'];
   if (!validRoles.includes(role)) {
     throw new Error(`Invalid role: ${role}`);
   }
@@ -256,7 +256,7 @@ export async function updateUser(
   }
 
   if (input.role !== undefined) {
-    const validRoles: UserRole[] = ['admin', 'secretary', 'member', 'guest'];
+    const validRoles: UserRole[] = ['super_admin', 'admin', 'member'];
     if (!validRoles.includes(input.role)) {
       throw new Error(`Invalid role: ${input.role}`);
     }
@@ -338,7 +338,7 @@ export async function changeUserRole(
   id: string,
   role: UserRole
 ): Promise<User | null> {
-  const validRoles: UserRole[] = ['admin', 'secretary', 'member', 'guest'];
+  const validRoles: UserRole[] = ['super_admin', 'admin', 'member'];
   if (!validRoles.includes(role)) {
     throw new Error(`Invalid role: ${role}`);
   }

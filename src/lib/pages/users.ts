@@ -46,12 +46,23 @@ function formatDate(dateString: string | null): string {
  */
 function getRoleBadgeClass(role: UserRole): string {
   const classes: Record<UserRole, string> = {
-    admin: 'bg-purple-100 text-purple-800',
-    secretary: 'bg-blue-100 text-blue-800',
+    super_admin: 'bg-purple-100 text-purple-800',
+    admin: 'bg-blue-100 text-blue-800',
     member: 'bg-green-100 text-green-800',
-    guest: 'bg-gray-100 text-gray-800',
   };
   return classes[role] || classes.member;
+}
+
+/**
+ * Get display name for user role
+ */
+function getRoleDisplayName(role: UserRole): string {
+  const names: Record<UserRole, string> = {
+    super_admin: 'Super Admin',
+    admin: 'Admin',
+    member: 'Member',
+  };
+  return names[role] || 'Member';
 }
 
 /**
@@ -125,9 +136,9 @@ export function UsersListPage(
                       class="border border-gray-300 rounded-lg px-3 py-2">
                 <option value="/admin/users">All Roles</option>
                 <option value="/admin/users?role=admin" ${filters?.role === 'admin' ? 'selected' : ''}>Admin</option>
-                <option value="/admin/users?role=secretary" ${filters?.role === 'secretary' ? 'selected' : ''}>Secretary</option>
+                <option value="/admin/users?role=admin" ${filters?.role === 'admin' ? 'selected' : ''}>Secretary</option>
                 <option value="/admin/users?role=member" ${filters?.role === 'member' ? 'selected' : ''}>Member</option>
-                <option value="/admin/users?role=guest" ${filters?.role === 'guest' ? 'selected' : ''}>Guest</option>
+                <option value="/admin/users?role=member" ${filters?.role === 'member' ? 'selected' : ''}>Guest</option>
               </select>
             </div>
             <div>
@@ -416,9 +427,9 @@ export function CreateUserFormPage(): string {
                       required
                       class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
                 <option value="member" selected>Member - Standard access</option>
-                <option value="guest">Guest - Limited access</option>
-                <option value="secretary">Secretary - Can manage requests</option>
-                <option value="admin">Admin - Full access</option>
+                <option value="member">Guest - Limited access</option>
+                <option value="super_admin">Secretary - Can manage requests</option>
+                <option value="super_admin">Admin - Full access</option>
               </select>
               <p class="text-xs text-gray-500 mt-1">
                 Select the appropriate permission level
@@ -498,9 +509,9 @@ export function EditUserFormPage(user: User): string {
                       required
                       class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
                 <option value="member" ${user.role === 'member' ? 'selected' : ''}>Member</option>
-                <option value="guest" ${user.role === 'guest' ? 'selected' : ''}>Guest</option>
-                <option value="secretary" ${user.role === 'secretary' ? 'selected' : ''}>Secretary</option>
-                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                <option value="member" ${user.role === 'member' ? 'selected' : ''}>Guest</option>
+                <option value="super_admin" ${user.role === 'admin' ? 'selected' : ''}>Secretary</option>
+                <option value="super_admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
               </select>
             </div>
 
