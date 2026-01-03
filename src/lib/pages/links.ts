@@ -22,14 +22,12 @@ export function LinksPage(): string {
         <h2>Masonic Resources</h2>
         <ul class="links-list">
           <li><a href="https://www.freemason.org" target="_blank" rel="noopener">Grand Lodge of California</a></li>
-          <li><a href="https://www.masoniclibrary.com" target="_blank" rel="noopener">Masonic Library and Museum</a></li>
           <li><a href="https://www.scottishrite.org" target="_blank" rel="noopener">Scottish Rite Southern Jurisdiction</a></li>
           <li><a href="https://www.yorkrite.org" target="_blank" rel="noopener">York Rite</a></li>
         </ul>
         
         <h2>Research Lodges</h2>
         <ul class="links-list">
-          <li><a href="https://www.masonicresearch society.org" target="_blank" rel="noopener">Masonic Research Society</a></li>
           <li><a href="https://www.quatuorcoronati.com" target="_blank" rel="noopener">Quatuor Coronati Lodge No. 2076</a></li>
           <li><a href="https://www.masonicworld.com" target="_blank" rel="noopener">Masonic World</a></li>
         </ul>
