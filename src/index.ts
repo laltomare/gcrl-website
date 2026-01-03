@@ -48,6 +48,10 @@ import { addSecurityHeaders, addDevModeHeaders, handleCors } from './lib/headers
 import { getClientIP, checkRateLimit, verifyToken, logSecurityEvent } from './lib/auth';
 import { sanitizeInput } from './lib/sanitize';
 import { generateTOTPSecret, generateTOTPURI, verifyTOTP, generateBackupCodes, isValidBackupCode, formatBackupCode } from './lib/totp';
+import publicRoutes from './routes/public';
+import apiRoutes from './routes/api';
+import adminRoutes from './routes/admin';
+import downloadRoutes from './routes/download';
 
 // Email sending function using Resend
 async function sendEmail(env: Env, to: string, subject: string, content: string): Promise<boolean> {
