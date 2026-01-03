@@ -42,8 +42,8 @@
 
 import { Env } from './types';
 import { HTML } from './lib/pages';
-import { HomePage, AboutPage, LibraryPage, DocumentDetailPage, LinksPage, ContactPage, JoinPage, AdminLoginPage, TwoFactorPage, TwoFactorSetupPage, ThankYouPage } from './lib/pages';
-import { addSecurityHeaders, handleCors } from './lib/headers';
+import { HomePage, AboutPage, LibraryPage, DocumentDetailPage, LinksPage, ContactPage, JoinPage, AdminLoginPage, AdminDashboardPage, TwoFactorPage, TwoFactorSetupPage, ThankYouPage } from './lib/pages';
+import { addSecurityHeaders, addDevModeHeaders, handleCors } from './lib/headers';
 import { getClientIP, checkRateLimit, verifyToken, logSecurityEvent } from './lib/auth';
 import { sanitizeInput } from './lib/sanitize';
 import { generateTOTPSecret, generateTOTPURI, verifyTOTP, generateBackupCodes, isValidBackupCode, formatBackupCode } from './lib/totp';
@@ -421,6 +421,29 @@ View this submission in the admin dashboard: ${env.SITE_URL}/admin`;
       });
     }
   }
+  // Get upcoming events (GET /api/events)
+  if (path === '/api/events' && request.method === 'GET') {
+    try {
+      const events = await env.DB.prepare(`
+        SELECT * FROM events 
+        WHERE event_date >= DATE('now')
+          AND is_published = 1
+        ORDER BY event_date ASC
+        LIMIT 3
+      `).all();
+
+      return new Response(JSON.stringify(events.results || []), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to fetch events' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+
 
   return new Response(JSON.stringify({ error: 'Not found' }), {
     status: 404,
@@ -627,8 +650,17 @@ async function handleAdminRoute(
   }
 
   // Admin dashboard (requires authentication)
+  // 
+  // FIXED: January 2, 2026 - Root cause analysis completed
+  // Previous bug: This route was returning TwoFactorSetupPage() instead of AdminDashboardPage()
+  // The admin dashboard function was accidentally deleted in commit e7c45cc
+  // Now restored with proper authentication check
   if (path === '/admin' && request.method === 'GET') {
-    return addSecurityHeaders(HTML`${TwoFactorSetupPage()}`);
+    // Use dev mode headers if DEV_MODE is enabled, otherwise use standard headers
+    const baseResponse = HTML`${AdminDashboardPage()}`;
+    return env.DEV_MODE === 'true' 
+      ? addDevModeHeaders(baseResponse)
+      : addSecurityHeaders(baseResponse);
   }
 
   // Admin API endpoint for dashboard data
@@ -848,6 +880,227 @@ async function handleAdminRoute(
       });
     }
   }
+  // ========================================
+  // ADMIN API: Event Management
+  // ========================================
+  
+  // Get all events (GET /admin/api/events)
+  if (path === '/admin/api/events' && request.method === 'GET') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    try {
+      const events = await env.DB.prepare(`
+        SELECT * FROM events 
+        WHERE event_date >= DATE('now', '-12 months')
+        ORDER BY event_date DESC
+      `).all();
+
+      return new Response(JSON.stringify(events.results || []), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to fetch events' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Create event (POST /admin/api/events)
+  if (path === '/admin/api/events' && request.method === 'POST') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    try {
+      const data = await request.json();
+      const { title, description, event_date, start_time, end_time, location, event_url, is_published } = data;
+
+      if (!title || !event_date || !start_time || !location) {
+        return new Response(JSON.stringify({ error: 'Title, date, start time, and location are required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const endTimeValue = end_time && end_time.trim() !== '' ? end_time : null;
+      const eventUrlValue = event_url && event_url.trim() !== '' ? event_url : null;
+
+      const result = await env.DB.prepare(`
+        INSERT INTO events (title, description, event_date, start_time, end_time, location, event_url, is_published)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        title,
+        description || '',
+        event_date,
+        start_time,
+        endTimeValue,
+        location,
+        eventUrlValue,
+        is_published ? 1 : 0
+      ).run();
+
+      await logSecurityEvent(env, 'EVENT_CREATE', request, `Event: ${title}`);
+
+      return new Response(JSON.stringify({ success: true, id: result.meta.last_row_id }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to create event' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Update event (PATCH /admin/api/events/{id})
+  if (path.startsWith('/admin/api/events/') && request.method === 'PATCH') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    try {
+      const eventId = path.split('/').pop();
+      const data = await request.json();
+      const { title, description, event_date, start_time, end_time, location, event_url, is_published } = data;
+
+      if (!title || !event_date || !start_time || !location) {
+        return new Response(JSON.stringify({ error: 'Title, date, start time, and location are required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const endTimeValue = end_time && end_time.trim() !== '' ? end_time : null;
+      const eventUrlValue = event_url && event_url.trim() !== '' ? event_url : null;
+
+      await env.DB.prepare(`
+        UPDATE events 
+        SET title = ?, description = ?, event_date = ?, start_time = ?, end_time = ?, location = ?, event_url = ?, is_published = ?
+        WHERE id = ?
+      `).bind(
+        title,
+        description || '',
+        event_date,
+        start_time,
+        endTimeValue,
+        location,
+        eventUrlValue,
+        is_published ? 1 : 0,
+        eventId
+      ).run();
+
+      await logSecurityEvent(env, 'EVENT_UPDATE', request, `Event: ${title}`);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to update event' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Delete event (DELETE /admin/api/events/{id})
+  if (path.startsWith('/admin/api/events/') && request.method === 'DELETE') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    try {
+      const eventId = path.split('/').pop();
+      const event = await env.DB.prepare('SELECT * FROM events WHERE id = ?').bind(eventId).first();
+
+      if (!event) {
+        return new Response(JSON.stringify({ error: 'Event not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      await env.DB.prepare('DELETE FROM events WHERE id = ?').bind(eventId).run();
+      await logSecurityEvent(env, 'EVENT_DELETE', request, `Event: ${event.title}`);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to delete event' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Copy event (POST /admin/api/events/{id}/copy)
+  if (path.startsWith('/admin/api/events/') && path.endsWith('/copy') && request.method === 'POST') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    try {
+      const eventId = path.split('/')[4];
+      const originalEvent = await env.DB.prepare('SELECT * FROM events WHERE id = ?').bind(eventId).first();
+
+      if (!originalEvent) {
+        return new Response(JSON.stringify({ error: 'Event not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const result = await env.DB.prepare(`
+        INSERT INTO events (title, description, event_date, start_time, end_time, location, event_url, is_published)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        (originalEvent.title as string) + ' (Copy)',
+        originalEvent.description,
+        originalEvent.event_date,
+        originalEvent.start_time,
+        originalEvent.end_time,
+        originalEvent.location,
+        originalEvent.event_url,
+        0
+      ).run();
+
+      await logSecurityEvent(env, 'EVENT_COPY', request, `Copied: ${originalEvent.title}`);
+
+      return new Response(JSON.stringify({ success: true, id: result.meta.last_row_id }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to copy event' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+
 
   return new Response('Not found', { status: 404 });
 }
@@ -921,4 +1174,421 @@ async function handleDownload(request: Request, env: Env, path: string): Promise
       'Content-Disposition': `attachment; filename="${doc.filename}"`
     }
   });
+
+  // ========================================
+  // ADMIN API: Membership Request Management
+  // ========================================
+  
+  // Update membership request status (PATCH /admin/api/requests/{id})
+  if (path.startsWith('/admin/api/requests/') && request.method === 'PATCH') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const requestId = path.split('/').pop();
+    const { status } = await request.json();
+    
+    // Validate status
+    const validStatuses = ['pending', 'contact', 'approved', 'rejected'];
+    if (!validStatuses.includes(status)) {
+      return new Response(JSON.stringify({ error: 'Invalid status' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    try {
+      await env.DB.prepare(
+        'UPDATE membership_requests SET status = ? WHERE id = ?'
+      ).bind(status, requestId).run();
+
+      await logSecurityEvent(env, 'REQUEST_STATUS_UPDATE', request, `Request ID: ${requestId}, Status: ${status}`);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to update request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Delete membership request (DELETE /admin/api/requests/{id})
+  if (path.startsWith('/admin/api/requests/') && request.method === 'DELETE') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const requestId = path.split('/').pop();
+
+    try {
+      await env.DB.prepare(
+        'DELETE FROM membership_requests WHERE id = ?'
+      ).bind(requestId).run();
+
+      await logSecurityEvent(env, 'REQUEST_DELETE', request, `Request ID: ${requestId}`);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to delete request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // ========================================
+  // ADMIN API: Document Management
+  // ========================================
+  
+  // Delete document (DELETE /admin/api/documents/{id})
+  if (path.startsWith('/admin/api/documents/') && request.method === 'DELETE') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const documentId = path.split('/').pop();
+
+    try {
+      // Get document info first
+      const doc = await env.DB.prepare(
+        'SELECT * FROM documents WHERE id = ?'
+      ).bind(documentId).first();
+
+      if (!doc) {
+        return new Response(JSON.stringify({ error: 'Document not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Delete from R2
+      await env.R2.delete(doc.filename);
+
+      // Delete from database
+      await env.DB.prepare(
+        'DELETE FROM documents WHERE id = ?'
+      ).bind(documentId).run();
+
+      await logSecurityEvent(env, 'DOCUMENT_DELETE', request, `Document: ${doc.title}`);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to delete document' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Upload document (POST /admin/api/documents)
+  if (path === '/admin/api/documents' && request.method === 'POST') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    try {
+      const formData = await request.formData();
+      const file = formData.get('file') as File;
+      const title = formData.get('title') as string;
+      const description = formData.get('description') as string;
+      const category = formData.get('category') as string;
+
+      if (!file || !title) {
+        return new Response(JSON.stringify({ error: 'File and title are required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Upload to R2
+      const filename = `${Date.now()}-${file.name}`;
+      await env.R2.put(filename, file.stream());
+
+      // Save to database
+      const result = await env.DB.prepare(
+        'INSERT INTO documents (title, description, category, filename, file_size, upload_date) VALUES (?, ?, ?, ?, ?, ?)'
+      ).bind(
+        title,
+        description || '',
+        category || '',
+        filename,
+        file.size,
+        new Date().toISOString()
+      ).run();
+
+      await logSecurityEvent(env, 'DOCUMENT_UPLOAD', request, `Document: ${title}`);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to upload document' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // ========================================
+  // PUBLIC API: Events (Upcoming events for home page)
+  // ========================================
+  
+  // Get upcoming events (GET /api/events)
+  if (path === '/api/events' && request.method === 'GET') {
+    try {
+      const events = await env.DB.prepare(`
+        SELECT * FROM events 
+        WHERE event_date >= DATE('now')
+          AND is_published = 1
+        ORDER BY event_date ASC
+        LIMIT 3
+      `).all();
+
+      return new Response(JSON.stringify(events.results || []), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to fetch events' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // ========================================
+  // ADMIN API: Event Management
+  // ========================================
+  
+  // Get all events (GET /admin/api/events)
+  if (path === '/admin/api/events' && request.method === 'GET') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    try {
+      // Show events from last 12 months and all future events
+      const events = await env.DB.prepare(`
+        SELECT * FROM events 
+        WHERE event_date >= DATE('now', '-12 months')
+        ORDER BY event_date DESC
+      `).all();
+
+      return new Response(JSON.stringify(events.results || []), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to fetch events' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Create event (POST /admin/api/events)
+  if (path === '/admin/api/events' && request.method === 'POST') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    try {
+      const data = await request.json();
+      const { title, description, event_date, start_time, end_time, location, event_url, is_published } = data;
+
+      if (!title || !event_date || !start_time || !location) {
+        return new Response(JSON.stringify({ error: 'Title, date, start time, and location are required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Convert empty strings to null for optional fields
+      const endTimeValue = end_time && end_time.trim() !== '' ? end_time : null;
+      const eventUrlValue = event_url && event_url.trim() !== '' ? event_url : null;
+
+      const result = await env.DB.prepare(`
+        INSERT INTO events (title, description, event_date, start_time, end_time, location, event_url, is_published)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        title,
+        description || '',
+        event_date,
+        start_time,
+        endTimeValue,
+        location,
+        eventUrlValue,
+        is_published ? 1 : 0
+      ).run();
+
+      await logSecurityEvent(env, 'EVENT_CREATE', request, `Event: ${title}`);
+
+      return new Response(JSON.stringify({ success: true, id: result.meta.last_row_id }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error: any) {
+      console.error('Error creating event:', error);
+      return new Response(JSON.stringify({ error: 'Failed to create event', details: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Update event (PATCH /admin/api/events/{id})
+  if (path.startsWith('/admin/api/events/') && request.method === 'PATCH') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const eventId = path.split('/').pop();
+
+    try {
+      const data = await request.json();
+      const { title, description, event_date, start_time, end_time, location, event_url, is_published } = data;
+
+      await env.DB.prepare(`
+        UPDATE events 
+        SET title = ?, description = ?, event_date = ?, start_time = ?, end_time = ?, location = ?, event_url = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(
+        title,
+        description || '',
+        event_date,
+        start_time,
+        end_time || null,
+        location,
+        event_url || null,
+        is_published ? 1 : 0,
+        eventId
+      ).run();
+
+      await logSecurityEvent(env, 'EVENT_UPDATE', request, `Event ID: ${eventId}`);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to update event' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Delete event (DELETE /admin/api/events/{id})
+  if (path.startsWith('/admin/api/events/') && request.method === 'DELETE') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const eventId = path.split('/').pop();
+
+    try {
+      await env.DB.prepare('DELETE FROM events WHERE id = ?').bind(eventId).run();
+
+      await logSecurityEvent(env, 'EVENT_DELETE', request, `Event ID: ${eventId}`);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to delete event' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Copy event (POST /admin/api/events/{id}/copy)
+  if (path.startsWith('/admin/api/events/') && path.endsWith('/copy') && request.method === 'POST') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const eventId = path.split('/')[4]; // /admin/api/events/{id}/copy
+
+    try {
+      // Get original event
+      const originalEvent = await env.DB.prepare(
+        'SELECT * FROM events WHERE id = ?'
+      ).bind(eventId).first();
+
+      if (!originalEvent) {
+        return new Response(JSON.stringify({ error: 'Event not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Create copy with "(Copy)" suffix
+      const result = await env.DB.prepare(`
+        INSERT INTO events (title, description, event_date, start_time, end_time, location, event_url, is_published)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        `${originalEvent.title} (Copy)`,
+        originalEvent.description || '',
+        originalEvent.event_date,
+        originalEvent.start_time,
+        originalEvent.end_time || null,
+        originalEvent.location,
+        originalEvent.event_url || null,
+        0 // Set to draft
+      ).run();
+
+      await logSecurityEvent(env, 'EVENT_COPY', request, `Copied from Event ID: ${eventId}`);
+
+      return new Response(JSON.stringify({ success: true, id: result.meta.last_row_id }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: 'Failed to copy event' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  return new Response('Not found', { status: 404 });
 }

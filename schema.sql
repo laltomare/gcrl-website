@@ -52,3 +52,21 @@ CREATE TABLE IF NOT EXISTS admin_2fa (
   backup_codes TEXT,
   setup_date TEXT
 );
+
+-- Events table (upcoming lodge events, symposiums, meetings)
+CREATE TABLE IF NOT EXISTS events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT,
+  event_date TEXT NOT NULL,
+  start_time TEXT NOT NULL,
+  end_time TEXT,
+  location TEXT,
+  event_url TEXT,
+  is_published INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_date ON events(event_date);
+CREATE INDEX IF NOT EXISTS idx_events_published ON events(is_published);

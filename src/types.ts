@@ -7,6 +7,7 @@ export interface Env {
   
   // Environment variables
   ENVIRONMENT: string;
+  DEV_MODE?: string; // "true" to disable caching for testing
   SITE_NAME: string;
   SITE_URL: string;
   SECRETARY_EMAIL: string; // Email address for form submission notifications

@@ -16,6 +16,7 @@ bucket_name = "gcrl-documents"
 # Environment variables
 [vars]
 ENVIRONMENT = "production"
+DEV_MODE = "true" # Set to "false" for production to enable caching
 SITE_NAME = "Golden Compasses Research Lodge"
 SITE_URL = "https://goldencompasses.org"
 SECRETARY_EMAIL = "lawrence@altomare.org" # TODO: Update to Bill's secretary email when available
