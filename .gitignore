@@ -35,3 +35,14 @@ build/
 # Temporary files
 *.tmp
 .cache/
+
+# Backup files
+*.backup
+*_backup_*.ts
+*_backup.ts
+*backup*.ts
+*.bak
+
+# Test scripts (temporary)
+test-*.js
+verify-*.js
