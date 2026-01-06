@@ -10,15 +10,18 @@
 ## Table of Contents
 
 1. [Executive Summary](#executive-summary)
-2. [Technical Debt Analysis](#technical-debt-analysis)
-3. [Architecture Design Principles](#architecture-design-principles)
-4. [Development Best Practices](#development-best-practices)
-5. [Testing Strategies](#testing-strategies)
-6. [Deployment Workflows](#deployment-workflows)
-7. [Code Organization Patterns](#code-organization-patterns)
-8. [Database Management](#database-management)
-9. [Clean Code Practices](#clean-code-practices)
-10. [Quick Reference Checklist](#quick-reference-checklist)
+2. [AI-Assisted Development](#ai-assisted-development)
+3. [Context Management for Long Projects](#context-management-for-long-projects)
+4. [Working with Vision Limitations](#working-with-vision-limitations)
+5. [Technical Debt Analysis](#technical-debt-analysis)
+6. [Architecture Design Principles](#architecture-design-principles)
+7. [Development Best Practices](#development-best-practices)
+8. [Testing Strategies](#testing-strategies)
+9. [Deployment Workflows](#deployment-workflows)
+10. [Code Organization Patterns](#code-organization-patterns)
+11. [Database Management](#database-management)
+12. [Clean Code Practices](#clean-code-practices)
+13. [Quick Reference Checklist](#quick-reference-checklist)
 
 ---
 
@@ -43,6 +46,925 @@ This document captures key lessons learned during the development of the GCRL we
 > — Anonymous
 
 The time spent debugging authentication issues could have been avoided with proper upfront design. This document outlines what to do differently next time.
+
+---
+
+## AI-Assisted Development
+
+### Understanding AI Limitations
+
+**Key Reality**: AI assistants are powerful but have limits. Understanding these limits makes AI-assisted development more effective.
+
+#### What AI Does Well ✅
+- Generate boilerplate code quickly
+- Suggest patterns and best practices
+- Write repetitive functions
+- Create documentation
+- Debug with human guidance
+- Explain complex concepts
+
+#### What AI Struggles With ❌
+- Catching every duplicate in large files (1000+ lines)
+- Maintaining full context in long conversations
+- Knowing project-specific details without context
+- Spotting subtle logic errors without testing
+- Runtime validation (cannot execute code)
+- Perfect accuracy with complex refactoring
+
+---
+
+### The Human + AI Partnership
+
+**The most effective approach** is a partnership, not replacement:
+
+```yaml
+Human Responsibilities:
+  - Catch what AI misses (duplicates, subtle bugs)
+  - Provide project context and requirements
+  - Test the code AI generates
+  - Review and approve changes
+  - Make final architectural decisions
+
+AI Responsibilities:
+  - Generate first drafts quickly
+  - Suggest implementation approaches
+  - Write repetitive code
+  - Document solutions
+  - Explain technical concepts
+
+Together:
+  - Ship working code faster
+  - Learn from each other
+  - Catch each other's mistakes
+  - Build better software
+```
+
+---
+
+### Real Example: Duplicate Route Handlers
+
+**What Happened**:
+
+1. AI generated authentication code
+2. Human noticed duplicate `/admin/login` handlers (lines 475, 569)
+3. AI investigated and found the duplicates
+4. Both worked together to fix the issue
+5. **Result**: Working authentication system
+
+**Key Lesson**:
+> "AI is a force multiplier, not a replacement for human review."
+
+---
+
+### Best Practices for AI-Assisted Development
+
+#### 1. Use Tools to Fill AI Gaps
+
+**After AI generates code, run automated checks**:
+
+```bash
+# 1. Check for duplicate code
+rg "admin/login" src/
+grep -n "path === '/admin/login'" src/index.ts
+
+# 2. Run linter
+npm run lint
+
+# 3. Check for common issues
+npm run lint:fix
+```
+
+**Why**: AI has blind spots. Tools don't.
+
+---
+
+#### 2. Small, Incremental Changes
+
+**Instead of**:
+```yaml
+❌ Rewrite entire file in one shot
+❌ Multiple complex changes at once
+❌ Hard to spot issues
+```
+
+**Do**:
+```yaml
+✅ One feature at a time
+✅ Test after each change
+✅ Commit working code
+✅ Roll back if broken
+```
+
+**Why**: Smaller changes = easier to review.
+
+---
+
+#### 3. Immediate Testing
+
+**Workflow**:
+```
+1. AI generates code
+2. Human reviews visually
+3. Run ESLint: npm run lint
+4. Test the feature
+5. Check browser console
+6. Commit if working
+7. Ask AI to fix if not
+```
+
+**Why**: Catch issues before they compound.
+
+---
+
+#### 4. Code Review Process
+
+**When AI generates code**:
+
+```markdown
+## Pre-Commit Checklist
+- [ ] Run ESLint: npm run lint
+- [ ] Search for duplicates: rg "pattern" src/
+- [ ] Test the feature manually
+- [ ] Check browser console for errors
+- [ ] Verify git diff looks correct
+- [ ] Only then commit
+```
+
+**Why**: Multiple checks = fewer bugs.
+
+---
+
+### Common AI Pitfalls (And How to Avoid)
+
+#### Pitfall 1: "AI Will Catch Everything"
+
+**Reality**: AI misses things, especially in large files.
+
+**Solution**:
+```bash
+# Always use tools to verify
+npm run lint
+rg "duplicate_pattern" src/
+git diff HEAD~1
+```
+
+---
+
+#### Pitfall 2: "No Need to Review"
+
+**Reality**: AI makes mistakes. Human review is essential.
+
+**Solution**:
+- Always review AI-generated code
+- Look for obvious issues first
+- Ask questions if something seems wrong
+- Test before committing
+
+---
+
+#### Pitfall 3: "AI Remembers Everything"
+
+**Reality**: AI loses context in long conversations.
+
+**Solution**:
+- Document decisions in files (PROJECT_STATE.md)
+- Use version control (git commits)
+- Restart long conversations periodically
+- Provide context summaries
+
+---
+
+#### Pitfall 4: "AI Will Test the Code"
+
+**Reality**: AI cannot execute code or test runtime behavior.
+
+**Solution**:
+- Test everything AI generates
+- Check browser console for errors
+- Verify edge cases
+- Test with real data
+
+---
+
+### When to Use AI (And When Not To)
+
+#### ✅ Good Use Cases for AI
+
+```yaml
+Code Generation:
+  - Boilerplate code (CRUD operations, API endpoints)
+  - Repetitive functions (input validation, error handling)
+  - Documentation (comments, README files)
+  - Test templates (unit tests, integration tests)
+
+Problem Solving:
+  - Debugging with error messages
+  - Explaining concepts
+  - Suggesting approaches
+  - Code refactoring ideas
+
+Learning:
+  - Understanding new libraries
+  - Explaining code patterns
+  - Best practices guidance
+  - Architecture discussions
+```
+
+#### ❌ Poor Use Cases for AI
+
+```yaml
+Critical Security:
+  - AI might miss edge cases
+  - Always security-review AI code
+  - Test thoroughly before production
+
+Complex Architecture:
+  - AI lacks full project context
+  - Human should make final decisions
+  - Use AI for suggestions, not decisions
+
+Production Data:
+  - AI cannot access your production environment
+  - Always test with real data
+  - Verify database queries manually
+```
+
+---
+
+### Bottom Line
+
+**AI-Assisted Development Works When**:
+- ✅ Human reviews AI output
+- ✅ Tools validate what AI misses
+- ✅ Testing happens immediately
+- ✅ Both human and AI play to their strengths
+
+**AI-Assisted Development Fails When**:
+- ❌ Human trusts AI blindly
+- ❌ No validation with tools
+- ❌ No testing before committing
+- ❌ Expected to be perfect
+
+---
+
+## Context Management for Long Projects
+
+### The Problem: Context Loss
+
+**What Happens in Long Conversations**:
+
+```
+Short Conversation (Messages 1-50):
+✅ Fast responses
+✅ Full context awareness
+✅ Remembers everything said
+✅ No errors
+
+Long Conversation (Messages 100+):
+❌ Slower responses
+❌ Partial context loss
+❌ Forgets earlier details
+❌ Errors and crashes
+```
+
+**Why?**
+
+1. **Token Limits**: AI can only "see" a certain amount of text at once
+2. **Memory Compression**: Earlier parts get summarized or dropped
+3. **Tool Failures**: Analysis tools have blind spots with large files
+4. **Session Crashes**: Goose/AI tool crashes and loses context
+
+---
+
+### Solution 1: PROJECT_STATE.md (Single Source of Truth) ⭐
+
+**Create a "living document" that tracks project state**:
+
+```markdown
+# PROJECT_STATE.md
+
+## Current Status
+- Feature: Session-based authentication
+- Status: Complete and deployed
+- Last Updated: January 6, 2026
+
+## Completed Features
+- ✅ Session-based login with email/password
+- ✅ Role-based authorization (admin, super_admin, member)
+- ✅ Password hashing with bcrypt
+- ✅ 7-day session expiration
+- ✅ Rate limiting (5 attempts per 15 minutes)
+
+## Test Credentials
+- testadmin@example.com / TestPassword123!
+- lawrence@altomare.org / [your password]
+- testmember@example.com / TestPassword123!
+
+## Database
+- Name: gcrl-documents
+- ID: 3a4b52a3-be84-495b-b8b4-6f0cde5c31a2
+
+## Next Tasks
+1. Test member login to library
+2. Test admin login to dashboard
+3. Test super admin login
+4. Test error handling
+
+## Known Issues
+- None currently
+```
+
+**Benefits**:
+- Quick context restoration when restarting
+- Single source of truth
+- No need to re-explain everything
+- Can be read by AI in seconds
+
+---
+
+### Solution 2: Use ChatRecall Tool
+
+**Goose has built-in conversation search**:
+
+```markdown
+When restarting goose, ask:
+
+"Can you search chat history for 'authentication implementation'?"
+
+AI will find:
+- Previous conversations about auth
+- Code we wrote
+- Decisions we made
+- Problems we solved
+```
+
+**This is how we restored context earlier in this conversation!**
+
+---
+
+### Solution 3: Version Control as Memory
+
+**Git commits serve as permanent memory**:
+
+```bash
+# Commit with meaningful messages
+git commit -m "feat: Implement session-based authentication
+
+- Add loginUser() in lib/auth.ts
+- Create verifySession() for tokens
+- Implement role-based checks
+- Fix duplicate /admin/login routes
+
+Test: Login works with testadmin@example.com
+Status: Ready for testing"
+```
+
+**When restarting**:
+```bash
+# See recent work
+git log --oneline -10
+
+# See what changed
+git diff HEAD~1 HEAD
+
+# Find specific commits
+git log --grep="authentication"
+```
+
+---
+
+### Solution 4: Break Work into Smaller Sessions
+
+**Instead of one 8-hour session, do focused 2-3 hour sessions**:
+
+```yaml
+Session 1: Authentication System (2-3 hours)
+  - Implement login
+  - Create sessions
+  - Test basic flow
+  - Document and commit
+
+Session 2: Admin Dashboard (2-3 hours)
+  - Build dashboard
+  - Add role checks
+  - Test access
+  - Document and commit
+
+Session 3: Error Handling (1-2 hours)
+  - Add validation
+  - Implement errors
+  - Test edge cases
+  - Document and commit
+```
+
+**Benefits**:
+- Each session is self-contained
+- Less context to remember
+- Can restart between sessions
+- Clear checkpoints
+
+---
+
+### Solution 5: Structured Restart Prompts
+
+**When restarting goose/AI, provide context in a structured way**:
+
+```markdown
+## Context for New Session
+
+### Project Overview
+Building GCRL (Masonic lodge website) with Cloudflare Workers
+
+### What We Just Did
+- Migrated from password-only auth to session-based
+- Fixed duplicate /admin/login handlers (lines 475, 569)
+- Deployed successfully - authentication working
+
+### Current Files
+- src/index.ts (main routes, 1398 lines)
+- src/lib/auth.ts (loginUser, verifySession)
+- src/lib/users.ts (user CRUD)
+- src/lib/user-sessions.ts (sessions)
+
+### Test Credentials
+- testadmin@example.com / TestPassword123!
+- lawrence@altomare.org / [password]
+
+### Current Issue
+None - system is working
+
+### Next Task
+Test 25 scenarios in TESTING_CHECKLIST.md
+
+### Please Search Chat History For
+- "authentication migration"
+- "duplicate route handlers"
+- "verifySession implementation"
+```
+
+**This gives AI everything needed to continue effectively!**
+
+---
+
+### Solution 6: Document Decisions Immediately
+
+**Don't rely on memory - write it down**:
+
+```markdown
+## SESSION_NOTES.md
+
+### Session: January 6, 2026 (AM)
+
+**What We Did**:
+- Implemented session-based authentication
+- Created loginUser() function
+- Added verifySession() function
+- Fixed duplicate route handlers
+
+**Key Decisions**:
+- Chose session-based auth (not token-only)
+- 7-day session expiration
+- Role-based access (admin, super_admin, member)
+- Bcrypt with cost factor 10
+
+**Issues Found**:
+- Duplicate /admin/login handlers at lines 475 and 569
+- Text editor truncated route paths
+- Wrong password hash in database
+
+**Issues Fixed**:
+- Removed duplicate handler
+- Fixed route paths
+- Updated password hash
+
+**Next Session**:
+- Test authentication scenarios
+- Create test member user
+- Verify all login flows
+```
+
+---
+
+### What NOT to Do
+
+❌ **Don't rely on AI memory**
+   - AI will forget details
+   - You'll forget details
+   - Leads to repeated work
+
+❌ **Don't make one giant session**
+   - More crashes
+   - Slower responses
+   - Hard to find things
+
+❌ **Don't skip documentation**
+   - "I'll remember this" = you won't
+   - "I'll remember this" = AI definitely won't
+   - Leads to repeating conversations
+
+❌ **Don't restart without context**
+   - Wastes time re-explaining
+   - Frustrating for both
+   - Lost productivity
+
+---
+
+### What TO Do (Best Practices)
+
+✅ **Update PROJECT_STATE.md after every change**
+   - Keep it current
+   - Read it when restarting
+   - Single source of truth
+
+✅ **Use ChatRecall to search previous conversations**
+   - Ask AI to search for specific topics
+   - Finds code, decisions, solutions
+   - Faster than re-explaining
+
+✅ **Commit frequently with meaningful messages**
+   - Git is external memory
+   - Commit messages = context
+   - Diff shows what changed
+
+✅ **Break work into focused sessions**
+   - 2-3 hours max per session
+   - Clear start/end points
+   - Commit between sessions
+
+✅ **Provide structured context when restarting**
+   - Use the template above
+   - Include current state
+   - List next tasks
+
+---
+
+## Working with Vision Limitations
+
+### The Challenge: Eyestrain from Code Review
+
+**The Problem**:
+- Reading thousands of lines of code causes eye strain
+- Small text is hard to read
+- Long coding sessions are exhausting
+- Missing details leads to bugs
+
+**The Solution**: Use **visual indicators** and **automation** instead of reading code closely.
+
+---
+
+### Tool 1: ESLint (Automated Code Checking) ⭐
+
+**What It Does**:
+- Automatically checks code for problems
+- Shows **red squiggly lines** for errors
+- Shows **yellow squiggly lines** for warnings
+- No need to read code closely - just look for colored lines!
+
+**How to Use**:
+```bash
+# Check for problems
+npm run lint
+
+# Fix problems automatically
+npm run lint:fix
+```
+
+**Example Output**:
+```
+src/routes/admin.ts
+  29:10  error  'getClientIP' is defined but never used
+  45:28  error  'c' is defined but never used
+  68:26  error  'c' is defined but never used
+
+✖ 60 problems (24 errors, 36 warnings)
+```
+
+**Benefits**:
+- Found 60 issues automatically
+- No code reading required
+- Can auto-fix many problems
+- List format (easy to review)
+
+---
+
+### Tool 2: VSCode Problems Panel (Visual Interface)
+
+**How to Open**:
+- Press `Cmd+Shift+M` (Mac)
+- OR click "View" → "Problems"
+
+**What You'll See**:
+```
+Problems (60)
+├── src/routes/admin.ts
+│   ├── 29:10  error  'getClientIP' is defined but never used
+│   ├── 45:28  error  'c' is defined but never used
+│   └── 68:26  error  'c' is defined but never used
+├── src/lib/auth.ts
+│   └── 34:45  error  'updateUser' is defined but never used
+└── src/lib/pages.ts
+    ├── 40:10  error  'Env' is defined but never used
+    └── 47:64  warning  Unexpected any
+```
+
+**Benefits**:
+- See all problems in a list
+- Click any problem to jump to that line
+- No need to scan through code
+- Works with any file type
+
+---
+
+### Tool 3: Search Tools (Find Duplicates Without Reading)
+
+**Use ripgrep to find patterns**:
+
+```bash
+# Find all occurrences of a pattern
+rg "admin/login" src/
+
+# Output:
+src/index.ts:475:if (path === '/admin/login' && request.method === 'POST') {
+src/index.ts:569:if (path === '/admin/login' && request.method === 'POST') {
+```
+
+**Benefits**:
+- Finds duplicates instantly
+- Shows line numbers
+- No code reading required
+- Works across entire project
+
+---
+
+### Tool 4: VSCode Settings for Eye Comfort
+
+**Increase font size and spacing**:
+
+```json
+// VSCode Settings (Cmd+,)
+{
+  "editor.fontSize": 18,        // Larger text (default 14)
+  "editor.lineHeight": 2,       // More space between lines
+  "editor.letterSpacing": 1,    // More space between characters
+  "editor.fontFamily": "Monaco", // Easy-to-read font
+  "editor.zoomPerFont": true    // Allow zooming
+}
+```
+
+**Zoom In/Out**:
+- `Cmd +` (zoom in)
+- `Cmd -` (zoom out)
+
+---
+
+### Tool 5: High Contrast Theme
+
+**Use themes that make squiggly lines stand out**:
+
+```yaml
+Recommended Themes:
+  - "Dark+ (default dark)" - High contrast
+  - "Monokai" - Clear colors
+  - "Solarized Dark" - Easy on eyes
+
+Avoid:
+  - Light themes (too bright)
+  - Low contrast themes
+```
+
+**Colors to Look For**:
+- 🔴 Red squiggle = Error (must fix)
+- 🟡 Yellow squiggle = Warning (should fix)
+- 🔵 Blue squiggle = Info
+- ⚪ No squiggle = Good!
+
+---
+
+### Workflow: Eye-Friendly Code Review
+
+#### Step 1: Run ESLint
+```bash
+npm run lint
+```
+**Result**: List of all problems in terminal
+
+#### Step 2: Open Problems Panel
+```
+Cmd+Shift+M
+```
+**Result**: Visual list with clickable items
+
+#### Step 3: Click Through Problems
+```
+Click each problem → Jumps to that line in code
+```
+**Result**: See context without searching
+
+#### Step 4: Review Just the Problematic Lines
+```
+Don't read entire file
+Just look at the lines with squiggles
+```
+**Result**: Focused review, less eye strain
+
+#### Step 5: Fix or Auto-Fix
+```bash
+npm run lint:fix
+```
+**Result**: Many problems fixed automatically
+
+---
+
+### Example: Finding Issues Without Reading Code
+
+**Traditional Way** (Hard on Eyes):
+```
+❌ Read entire src/index.ts (1398 lines)
+❌ Look for typos and mistakes
+❌ Compare patterns
+❌ Eye strain from focusing
+❌ Time: 30+ minutes
+```
+
+**Eye-Friendly Way** (With Tools):
+```
+✅ Run: npm run lint
+✅ See list of 60 problems
+✅ Click through each problem
+✅ Look at just those 60 lines
+✅ Fix or ignore
+✅ Time: 5 minutes
+```
+
+**Time Savings**: 83% faster  
+**Eye Strain**: Almost eliminated
+
+---
+
+### Best Practices for Developers with Eyestrain
+
+#### 1. Never Read Code Closely
+```yaml
+Instead:
+  - Use ESLint to find problems
+  - Use Problems Panel to see issues
+  - Use search tools to find patterns
+  - Look at squiggly lines, not code
+```
+
+---
+
+#### 2. Use Visual Indicators
+```yaml
+Red Squiggle = Error
+  - Must fix
+  - Click to see details
+  - Hover for explanation
+
+Yellow Squiggle = Warning
+  - Should fix
+  - Not critical
+  - Can ignore if needed
+
+No Squiggle = Good
+  - No issues
+  - Move on
+```
+
+---
+
+#### 3. Automate Everything Possible
+```bash
+# Auto-fix issues
+npm run lint:fix
+
+# Find duplicates
+rg "pattern" src/
+
+# Check for problems
+npm run lint
+
+# Format code automatically
+npx prettier --write src/
+```
+
+---
+
+#### 4. Increase Text Size
+```json
+{
+  "editor.fontSize": 18,      // Or 20 if needed
+  "editor.lineHeight": 2,     // More breathing room
+  "editor.letterSpacing": 1   // Wider characters
+}
+```
+
+---
+
+#### 5. Take Frequent Breaks
+```yaml
+20-20-20 Rule:
+  - Every 20 minutes
+  - Look at something 20 feet away
+  - For 20 seconds
+
+This reduces eye strain significantly.
+```
+
+---
+
+### Accessibility Features
+
+#### VSCode Built-In Features
+```yaml
+Zoom:
+  - Cmd + (zoom in)
+  - Cmd - (zoom out)
+  - Cmd 0 (reset zoom)
+
+Line Height:
+  - "editor.lineHeight": 2
+  - More space between lines
+
+Font Size:
+  - "editor.fontSize": 18
+  - Larger, easier to read
+
+Cursor:
+  - "editor.cursorBlinking": "smooth"
+  - Less distracting
+
+Theme:
+  - Use high-contrast theme
+  - Easier to see squiggly lines
+```
+
+---
+
+### Key Principle
+
+> **"Don't read code - look for colored lines."**
+
+**The Old Way**:
+- Read every line
+- Look for typos
+- Hunt for duplicates
+- Eye strain
+- Time consuming
+
+**The New Way**:
+- Run tools
+- Look for squiggles
+- Click through problems
+- Fix issues
+- Minimal eye strain
+
+---
+
+### Quick Reference
+
+**Commands**:
+```bash
+npm run lint      # Check for problems
+npm run lint:fix  # Fix automatically
+rg "pattern" src/ # Search for patterns
+```
+
+**VSCode Shortcuts**:
+```
+Cmd+Shift+M  # Problems panel
+Cmd+         # Zoom in
+Cmd-         # Zoom out
+Cmd 0        # Reset zoom
+```
+
+**What to Look For**:
+- 🔴 Red squiggles = Errors
+- 🟡 Yellow squiggles = Warnings
+- ⚪ No squiggles = Good!
+
+---
+
+### Summary
+
+**For developers with vision limitations**:
+
+✅ **Do**:
+- Use ESLint for automatic checking
+- Use Problems Panel for visual interface
+- Use search tools (rg, grep) to find patterns
+- Increase font size and line spacing
+- Use high-contrast themes
+- Take frequent breaks
+
+❌ **Don't**:
+- Read code closely
+- Hunt for mistakes manually
+- Strain your eyes
+- Work for long periods without breaks
+- Use small fonts or low contrast
+
+**Result**: Faster development, less eye strain, same quality code!
 
 ---
 
