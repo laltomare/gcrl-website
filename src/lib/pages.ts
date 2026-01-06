@@ -61,7 +61,7 @@ export function BasePage(title: string, content: string, currentPage: string = '
   <title>${title} - ${SITE_NAME}</title>
   <meta name="description" content="${SITE_DESCRIPTION}">
   <meta name="theme-color" content="#C2A43B">
-  <link rel="stylesheet" href="/styles.css?v=19">
+  <link rel="stylesheet" href="/styles.css?v=20">
 </head>
 <body>
   <header>
@@ -1092,7 +1092,19 @@ export function AdminLoginPage(error: string = ''): string {
       
       ${error ? `<div class="error-message">${escapeHtml(error)}</div>` : ''}
       
-      <form id="loginForm" method="POST" action="/admin/verify">
+      <div id="loginForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            required 
+            autocomplete="email"
+            placeholder="Enter your email"
+          >
+        </div>
+        
         <div class="form-group">
           <label for="password">Password</label>
           <input 
@@ -1101,12 +1113,13 @@ export function AdminLoginPage(error: string = ''): string {
             name="password" 
             required 
             autocomplete="current-password"
-            placeholder="Enter your admin password"
+            placeholder="Enter your password"
+            onkeypress="if(event.key === 'Enter') handleLogin()"
           >
         </div>
         
-        <button type="submit" class="btn btn-primary">Continue</button>
-      </form>
+        <button type="button" class="btn btn-primary" onclick="handleLogin()">Login</button>
+      </div>
       
       <div class="login-footer">
         <p><a href="/">← Back to Website</a></p>
@@ -1115,37 +1128,45 @@ export function AdminLoginPage(error: string = ''): string {
   </div>
   
   <script>
-    const form = document.getElementById('loginForm');
-    form.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      
+    async function handleLogin() {
+      const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       
-      if (password.length < 14) {
-        alert('Password must be at least 14 characters long.');
+      if (!email || !password) {
+        alert('Please enter both email and password.');
         return;
       }
       
+      const container = document.getElementById('loginForm').parentNode;
+      const existingError = container.querySelector('.error-message');
+      if (existingError) {
+        existingError.remove();
+      }
+      
       try {
-        const response = await fetch('/admin/verify', {
+        const response = await fetch('/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password })
+          body: JSON.stringify({ email, password })
         });
         
         const result = await response.json();
         
-        if (response.ok && result.token) {
+        if (response.ok && result.success && result.token) {
           localStorage.setItem('adminToken', result.token);
-          window.location.href = result.redirect || '/admin';
+          localStorage.setItem('adminUser', JSON.stringify(result.user));
+          window.location.href = '/admin';
         } else {
-          window.location.href = '/admin/login?error=' + encodeURIComponent(result.error || 'Login failed');
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'error-message';
+          errorDiv.textContent = result.error || 'Login failed. Please try again.';
+          container.insertBefore(errorDiv, document.getElementById('loginForm'));
         }
       } catch (error) {
         console.error('Login error:', error);
         alert('Login failed. Please try again.');
       }
-    });
+    }
   </script>
 </body>
 </html>`;
@@ -1536,7 +1557,7 @@ export function TwoFactorSetupPage(qrCodeDataUrl: string, secret: string, backup
     
     <div class="button-container">
       <button class="btn btn-primary" onclick="document.getElementById('verifyForm').submit()">Enable 2FA</button>
-      <button class="btn btn-secondary" onclick="if(confirm('Are you sure? Skipping 2FA will leave your account less secure.')) window.location.href='/admin/dashboard'">Skip for Now</button>
+      <button class="btn btn-secondary" onclick="if(confirm('Are you sure? Skipping 2FA will leave your account less secure.')) window.location.href='/admin'">Skip for Now</button>
     </div>
   </div>
   
@@ -1621,6 +1642,9 @@ export function AdminDashboardPage(): string {
         <button onclick="logout()" class="btn-action" style="background: #dc3545; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer;">Logout</button>
       </div>
     </nav>
+    <div style="background: #3a4a45; padding: 0.5rem 0; text-align: center;">
+      <span id="userInfo" style="color: #ffffff; font-size: 0.9rem;">Loading user info...</span>
+    </div>
   </header>
   
   <div id="loading">Loading dashboard...</div>
@@ -1813,10 +1837,54 @@ export function AdminDashboardPage(): string {
   
   <script>
     const token = localStorage.getItem('adminToken');
+    const userStr = localStorage.getItem('adminUser');
     
-    // Check if logged in
-    if (!token) {
-      window.location.href = '/admin/login';
+    // Verify session with backend on page load
+    async function verifySession() {
+      if (!token) {
+        window.location.href = '/admin/login';
+        return false;
+      }
+      
+      try {
+        const response = await fetch('/admin/verify-session', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token 
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            // Update user info in localStorage and display
+            localStorage.setItem('adminUser', JSON.stringify(data.user));
+            displayUserInfo(data.user);
+            return true;
+          }
+        }
+        
+        // Session invalid, redirect to login
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        window.location.href = '/admin/login';
+        return false;
+      } catch (error) {
+        console.error('Session verification failed:', error);
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        window.location.href = '/admin/login';
+        return false;
+      }
+    }
+    
+    // Display user info in header
+    function displayUserInfo(user) {
+      const userInfoDiv = document.getElementById('userInfo');
+      const roleLabel = user.role === 'super_admin' ? 'Super Admin' : 
+                       user.role === 'admin' ? 'Admin' : 'Member';
+      userInfoDiv.textContent = 'Logged in as ' + user.name + ' (' + roleLabel + ')';
     }
     
     // Check 2FA status
@@ -1979,13 +2047,31 @@ export function AdminDashboardPage(): string {
     }
     
     // Logout
-    function logout() {
+    async function logout() {
+      try {
+        const response = await fetch('/admin/logout', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token 
+          }
+        });
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+      
+      // Clear localStorage regardless of API response
       localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminUser');
       window.location.href = '/admin/login';
     }
     
     // Load dashboard data
     async function loadDashboard() {
+      // First verify session
+      const sessionValid = await verifySession();
+      if (!sessionValid) return;
+      
       try {
         const response = await fetch('/admin/api/data', {
           headers: { 'Authorization': 'Bearer ' + token }
@@ -2000,6 +2086,15 @@ export function AdminDashboardPage(): string {
           document.getElementById('docCount').textContent = data.documents.length;
           document.getElementById('pendingCount').textContent = data.requests.filter(r => r.status === 'pending').length;
           document.getElementById('totalCount').textContent = data.requests.length;
+          document.getElementById('userCount').textContent = data.userCount || 0;
+          
+          // Populate users summary
+          const usersSummary = document.getElementById('usersSummary');
+          if (data.userCount > 0) {
+            usersSummary.innerHTML = '<p style="color: #666; font-size: 0.9rem;">You have <strong>' + data.userCount + '</strong> user(s) in the system. Click "Manage Users" to view details, create new users, or manage permissions.</p>';
+          } else {
+            usersSummary.innerHTML = '<p style="color: #666; font-size: 0.9rem;">No users in the system yet. Click "Manage Users" to create your first user.</p>';
+          }
           
           // Populate documents table
           const documentsList = document.getElementById('documentsList');

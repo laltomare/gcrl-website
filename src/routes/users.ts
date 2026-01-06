@@ -55,6 +55,7 @@ import { sanitizeInput } from '../lib/sanitize';
  */
 export async function handleUsersList(request: Request, env: Env): Promise<Response> {
   try {
+    console.log('handleUsersList: Starting...');
     const url = new URL(request.url);
     const params = new URLSearchParams(url.search);
 
@@ -69,17 +70,25 @@ export async function handleUsersList(request: Request, env: Env): Promise<Respo
       filters.is_active = false;
     }
 
+    console.log('handleUsersList: Fetching users with filters:', filters);
+
     // Fetch users
     const users = await listUsers(env.DB, filters);
 
+    console.log('handleUsersList: Found', users.length, 'users');
+
     // Render page
+    console.log('handleUsersList: Rendering page...');
     const html = UsersListPage(users, filters);
+    console.log('handleUsersList: Page rendered successfully');
+    
     return new Response(html, {
       headers: { 'Content-Type': 'text/html;charset=UTF-8' },
     });
   } catch (error) {
     console.error('Error loading users list:', error);
-    return new Response('Error loading users', { status: 500 });
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+    return new Response(`Error loading users: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
   }
 }
 
@@ -89,14 +98,20 @@ export async function handleUsersList(request: Request, env: Env): Promise<Respo
  */
 export async function handleUserDetail(request: Request, env: Env, userId: string): Promise<Response> {
   try {
+    console.log('Loading user detail for ID:', userId);
+    
     // Fetch user
     const user = await getUserById(env.DB, userId);
     if (!user) {
+      console.log('User not found:', userId);
       return new Response('User not found', { status: 404 });
     }
 
+    console.log('User found:', user.id, user.email);
+
     // Fetch user sessions
     const sessions = await getUserSessions(env.DB, userId);
+    console.log('User sessions:', sessions.length);
 
     // Render page
     const html = UserDetailPage(user, sessions);
@@ -105,7 +120,7 @@ export async function handleUserDetail(request: Request, env: Env, userId: strin
     });
   } catch (error) {
     console.error('Error loading user detail:', error);
-    return new Response('Error loading user', { status: 500 });
+    return new Response(`Error loading user: ${error}`, { status: 500 });
   }
 }
 
@@ -143,8 +158,13 @@ export async function handleCreateUser(request: Request, env: Env): Promise<Resp
       role: role as any,
     });
 
+    console.log('User created successfully:', user.id, user.email);
+
     // Redirect to user detail page
-    return Response.redirect(`${request.url}/${user.id}`, 302);
+    const url = new URL(request.url);
+    const redirectUrl = `${url.origin}/admin/users/${user.id}`;
+    console.log('Redirecting to:', redirectUrl);
+    return Response.redirect(redirectUrl, 302);
   } catch (error: any) {
     console.error('Error creating user:', error);
     
@@ -202,7 +222,9 @@ export async function handleUpdateUser(request: Request, env: Env, userId: strin
     }
 
     // Redirect to user detail page
-    return Response.redirect(new URL(request.url).pathname.replace('/edit', ''), 302);
+    const url = new URL(request.url);
+    const detailUrl = url.origin + url.pathname.replace('/edit', '');
+    return Response.redirect(detailUrl, 302);
   } catch (error: any) {
     console.error('Error updating user:', error);
     return new Response(error.message || 'Error updating user', { status: 400 });
@@ -226,7 +248,7 @@ export async function handleDeleteUser(request: Request, env: Env, userId: strin
 
     // Redirect to users list
     const url = new URL(request.url);
-    const listUrl = url.pathname.replace(/\/users\/.*/, '/users');
+    const listUrl = url.origin + url.pathname.replace(/\/users\/.*/, '/users');
     return Response.redirect(listUrl, 302);
   } catch (error) {
     console.error('Error deleting user:', error);
@@ -244,7 +266,7 @@ export async function handleActivateUser(request: Request, env: Env, userId: str
 
     // Redirect to user detail page
     const url = new URL(request.url);
-    const detailUrl = url.pathname.replace('/activate', '');
+    const detailUrl = url.origin + url.pathname.replace('/activate', '');
     return Response.redirect(detailUrl, 302);
   } catch (error) {
     console.error('Error activating user:', error);
@@ -262,7 +284,7 @@ export async function handleDeactivateUser(request: Request, env: Env, userId: s
 
     // Redirect to user detail page
     const url = new URL(request.url);
-    const detailUrl = url.pathname.replace('/deactivate', '');
+    const detailUrl = url.origin + url.pathname.replace('/deactivate', '');
     return Response.redirect(detailUrl, 302);
   } catch (error) {
     console.error('Error deactivating user:', error);
@@ -289,7 +311,7 @@ export async function handleRevokeSession(request: Request, env: Env, userId: st
 
     // Redirect to user detail page
     const url = new URL(request.url);
-    const detailUrl = url.pathname.replace(/\/sessions\/.*/, '');
+    const detailUrl = url.origin + url.pathname.replace(/\/sessions\/.*/, '');
     return Response.redirect(detailUrl, 302);
   } catch (error) {
     console.error('Error revoking session:', error);
@@ -307,7 +329,7 @@ export async function handleRevokeAllSessions(request: Request, env: Env, userId
 
     // Redirect to user detail page
     const url = new URL(request.url);
-    const detailUrl = url.pathname.replace(/\/sessions\/.*/, '');
+    const detailUrl = url.origin + url.pathname.replace(/\/sessions\/.*/, '');
     return Response.redirect(detailUrl, 302);
   } catch (error) {
     console.error('Error revoking all sessions:', error);

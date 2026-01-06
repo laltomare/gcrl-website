@@ -68,10 +68,19 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  password_hash?: string;  // Hashed password (bcrypt)
   created_at: string;
   updated_at: string;
   last_login: string | null;
   is_active: boolean;
+  /**
+   * Two-factor authentication settings
+   * Grace period: Admin/super_admin users have 7 days from account creation
+   * to enable 2FA before being required to do so
+   */
+  two_factor_enabled?: boolean;
+  two_factor_secret?: string;
+  two_factor_grace_period_ends?: string | null; // ISO timestamp when grace period ends
 }
 
 /**

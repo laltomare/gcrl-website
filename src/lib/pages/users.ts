@@ -88,9 +88,77 @@ export function UsersListPage(
   const adminCount = users.filter(u => u.role === 'admin').length;
   const memberCount = users.filter(u => u.role === 'member').length;
 
-  return BasePage({
-    title: 'User Management',
-    content: `
+  // Pre-compute filter selections to avoid nested template literal issues
+  const superAdminSelected = filters?.role === 'super_admin' ? 'selected' : '';
+  const adminSelected = filters?.role === 'admin' ? 'selected' : '';
+  const memberSelected = filters?.role === 'member' ? 'selected' : '';
+  const activeSelected = filters?.is_active === true ? 'selected' : '';
+  const inactiveSelected = filters?.is_active === false ? 'selected' : '';
+  
+  // Pre-compute empty state message
+  const filterText = filters ? 'Try adjusting your filters or ' : '';
+  const emptyMessage = users.length === 0 
+    ? `<tr>
+        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+          No users found. ${filterText}<a href="/admin/users/new" class="text-blue-600 hover:underline">create a new user</a>.
+        </td>
+      </tr>`
+    : '';
+
+  // Pre-compute table rows
+  const tableRows = users.map(user => {
+    const escapedName = HTML.escape(user.name);
+    const escapedEmail = HTML.escape(user.email);
+    const roleBadgeClass = getRoleBadgeClass(user.role);
+    const statusBadgeClass = getStatusBadgeClass(user.is_active);
+    const roleDisplay = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+    const statusDisplay = user.is_active ? 'Active' : 'Inactive';
+    const lastLoginDisplay = formatDate(user.last_login);
+    const actionButtons = user.is_active 
+      ? `<form method="POST" action="/admin/users/${user.id}/deactivate" class="inline">
+          <button type="submit" 
+                  onclick="return confirm('Deactivate ${escapedName}?')"
+                  class="text-red-600 hover:text-red-900 ml-2">Deactivate</button>
+        </form>`
+      : `<form method="POST" action="/admin/users/${user.id}/activate" class="inline">
+          <button type="submit" class="text-green-600 hover:text-green-900 ml-2">Activate</button>
+        </form>`;
+    
+    return `
+      <tr class="hover:bg-gray-50">
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm font-medium text-gray-900">${escapedName}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm text-gray-900">${escapedEmail}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${roleBadgeClass}">
+            ${roleDisplay}
+          </span>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass}">
+            ${statusDisplay}
+          </span>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          ${lastLoginDisplay}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+          <div class="flex gap-2">
+            <a href="/admin/users/${user.id}" class="text-blue-600 hover:text-blue-900">View</a>
+            <a href="/admin/users/${user.id}/edit" class="text-indigo-600 hover:text-indigo-900">Edit</a>
+            ${actionButtons}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  return BasePage(
+    'User Management',
+    `
       <div class="space-y-6">
         <!-- Header -->
         <div class="flex justify-between items-center">
@@ -99,8 +167,9 @@ export function UsersListPage(
             <p class="text-gray-600 mt-1">Manage lodge members and their access</p>
           </div>
           <a href="/admin/users/new" 
-             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium inline-flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium inline-flex items-center gap-2"
+             style="background-color: #2563eb; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+            <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
             Add User
@@ -135,10 +204,9 @@ export function UsersListPage(
               <select onchange="window.location.href = this.value" 
                       class="border border-gray-300 rounded-lg px-3 py-2">
                 <option value="/admin/users">All Roles</option>
-                <option value="/admin/users?role=admin" ${filters?.role === 'admin' ? 'selected' : ''}>Admin</option>
-                <option value="/admin/users?role=admin" ${filters?.role === 'admin' ? 'selected' : ''}>Secretary</option>
-                <option value="/admin/users?role=member" ${filters?.role === 'member' ? 'selected' : ''}>Member</option>
-                <option value="/admin/users?role=member" ${filters?.role === 'member' ? 'selected' : ''}>Guest</option>
+                <option value="/admin/users?role=super_admin" ${superAdminSelected}>Super Admin</option>
+                <option value="/admin/users?role=admin" ${adminSelected}>Admin</option>
+                <option value="/admin/users?role=member" ${memberSelected}>Member</option>
               </select>
             </div>
             <div>
@@ -146,8 +214,8 @@ export function UsersListPage(
               <select onchange="window.location.href = this.value"
                       class="border border-gray-300 rounded-lg px-3 py-2">
                 <option value="/admin/users">All Status</option>
-                <option value="/admin/users?status=active" ${filters?.is_active === true ? 'selected' : ''}>Active</option>
-                <option value="/admin/users?status=inactive" ${filters?.is_active === false ? 'selected' : ''}>Inactive</option>
+                <option value="/admin/users?status=active" ${activeSelected}>Active</option>
+                <option value="/admin/users?status=inactive" ${inactiveSelected}>Inactive</option>
               </select>
             </div>
           </div>
@@ -167,65 +235,21 @@ export function UsersListPage(
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              ${users.length === 0 ? `
-                <tr>
-                  <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                    No users found. ${filters ? 'Try adjusting your filters or ' : ''}<a href="/admin/users/new" class="text-blue-600 hover:underline">create a new user</a>.
-                  </td>
-                </tr>
-              ` : users.map(user => `
-                <tr class="hover:bg-gray-50">
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">${HTML.escape(user.name)}</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-900">${HTML.escape(user.email)}</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeClass(user.role)}">
-                      ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(user.is_active)}">
-                      ${user.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${formatDate(user.last_login)}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div class="flex gap-2">
-                      <a href="/admin/users/${user.id}" class="text-blue-600 hover:text-blue-900">View</a>
-                      <a href="/admin/users/${user.id}/edit" class="text-indigo-600 hover:text-indigo-900">Edit</a>
-                      ${user.is_active ? `
-                        <form method="POST" action="/admin/users/${user.id}/deactivate" class="inline">
-                          <button type="submit" 
-                                  onclick="return confirm('Deactivate ${HTML.escape(user.name)}?')"
-                                  class="text-red-600 hover:text-red-900 ml-2">Deactivate</button>
-                        </form>
-                      ` : `
-                        <form method="POST" action="/admin/users/${user.id}/activate" class="inline">
-                          <button type="submit" class="text-green-600 hover:text-green-900 ml-2">Activate</button>
-                        </form>
-                      `}
-                    </div>
-                  </td>
-                </tr>
-              `).join('')}
+              ${emptyMessage}
+              ${tableRows}
             </tbody>
           </table>
         </div>
 
         <!-- Back to Dashboard -->
         <div class="mt-6">
-          <a href="/admin/dashboard" class="text-gray-600 hover:text-gray-900">
+          <a href="/admin" class="text-gray-600 hover:text-gray-900">
             ← Back to Dashboard
           </a>
         </div>
       </div>
-    `,
-  });
+    `
+  );
 }
 
 /**
@@ -234,17 +258,19 @@ export function UsersListPage(
  */
 export function UserDetailPage(user: User, sessions: UserSession[]): string {
   const activeSessionsCount = sessions.length;
+  const escapedName = HTML.escape(user.name);
+  const escapedEmail = HTML.escape(user.email);
 
-  return BasePage({
-    title: `User: ${user.name}`,
-    content: `
+  return BasePage(
+    `User: ${user.name}`,
+    `
       <div class="space-y-6">
         <!-- Header -->
         <div class="flex justify-between items-center">
           <div>
             <a href="/admin/users" class="text-gray-600 hover:text-gray-900 mb-2 inline-block">← Back to Users</a>
-            <h1 class="text-3xl font-bold text-gray-900">${HTML.escape(user.name)}</h1>
-            <p class="text-gray-600 mt-1">${HTML.escape(user.email)}</p>
+            <h1 class="text-3xl font-bold text-gray-900">${escapedName}</h1>
+            <p class="text-gray-600 mt-1">${escapedEmail}</p>
           </div>
           <div class="flex gap-2">
             <a href="/admin/users/${user.id}/edit"
@@ -265,11 +291,11 @@ export function UserDetailPage(user: User, sessions: UserSession[]): string {
               </div>
               <div>
                 <dt class="text-sm font-medium text-gray-500">Name</dt>
-                <dd class="text-sm text-gray-900 mt-1">${HTML.escape(user.name)}</dd>
+                <dd class="text-sm text-gray-900 mt-1">${escapedName}</dd>
               </div>
               <div>
                 <dt class="text-sm font-medium text-gray-500">Email</dt>
-                <dd class="text-sm text-gray-900 mt-1">${HTML.escape(user.email)}</dd>
+                <dd class="text-sm text-gray-900 mt-1">${escapedEmail}</dd>
               </div>
               <div>
                 <dt class="text-sm font-medium text-gray-500">Role</dt>
@@ -341,7 +367,7 @@ export function UserDetailPage(user: User, sessions: UserSession[]): string {
               
               <div class="mt-4 pt-4 border-t border-gray-200">
                 <form method="POST" action="/admin/users/${user.id}/sessions/delete-all"
-                      onsubmit="return confirm('Revoke ALL sessions for ${HTML.escape(user.name)}? This will force them to logout everywhere.');">
+                      onsubmit="return confirm('Revoke ALL sessions for ${escapedName}? This will force them to logout everywhere.');">
                   <button type="submit" class="text-sm text-red-600 hover:text-red-900 font-medium">
                     Revoke All Sessions
                   </button>
@@ -358,7 +384,7 @@ export function UserDetailPage(user: User, sessions: UserSession[]): string {
             Irreversible and destructive actions. Proceed with caution.
           </p>
           <form method="POST" action="/admin/users/${user.id}/delete"
-                onsubmit="return confirm('PERMANENTLY DELETE ${HTML.escape(user.name)}? This action cannot be undone and will cascade to delete all sessions.');">
+                onsubmit="return confirm('PERMANENTLY DELETE ${escapedName}? This action cannot be undone and will cascade to delete all sessions.');">
             <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium">
               Delete User
             </button>
@@ -366,7 +392,7 @@ export function UserDetailPage(user: User, sessions: UserSession[]): string {
         </div>
       </div>
     `,
-  });
+  );
 }
 
 /**
@@ -374,9 +400,9 @@ export function UserDetailPage(user: User, sessions: UserSession[]): string {
  * Form to create a new user
  */
 export function CreateUserFormPage(): string {
-  return BasePage({
-    title: 'Create New User',
-    content: `
+  return BasePage(
+    'Create New User',
+    `
       <div class="max-w-2xl">
         <!-- Header -->
         <div class="mb-6">
@@ -451,7 +477,7 @@ export function CreateUserFormPage(): string {
         </div>
       </div>
     `,
-  });
+  );
 }
 
 /**
@@ -459,9 +485,12 @@ export function CreateUserFormPage(): string {
  * Form to edit an existing user
  */
 export function EditUserFormPage(user: User): string {
-  return BasePage({
-    title: `Edit User: ${user.name}`,
-    content: `
+  const escapedName = HTML.escape(user.name);
+  const escapedEmail = HTML.escape(user.email);
+
+  return BasePage(
+    `Edit User: ${user.name}`,
+    `
       <div class="max-w-2xl">
         <!-- Header -->
         <div class="mb-6">
@@ -482,7 +511,7 @@ export function EditUserFormPage(user: User): string {
                      id="name"
                      name="name"
                      required
-                     value="${HTML.escape(user.name)}"
+                     value="${escapedName}"
                      class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
 
@@ -495,7 +524,7 @@ export function EditUserFormPage(user: User): string {
                      id="email"
                      name="email"
                      required
-                     value="${HTML.escape(user.email)}"
+                     value="${escapedEmail}"
                      class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
 
@@ -551,7 +580,7 @@ export function EditUserFormPage(user: User): string {
             ${user.is_active ? `
               <form method="POST" action="/admin/users/${user.id}/deactivate" class="inline">
                 <button type="submit"
-                        onclick="return confirm('Deactivate ${HTML.escape(user.name)}?')"
+                        onclick="return confirm('Deactivate ${escapedName}?')"
                         class="text-red-600 hover:text-red-900 font-medium">
                   Deactivate User
                 </button>
@@ -567,5 +596,5 @@ export function EditUserFormPage(user: User): string {
         </div>
       </div>
     `,
-  });
+  );
 }

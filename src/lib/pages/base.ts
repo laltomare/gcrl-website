@@ -12,10 +12,29 @@ const SITE_NAME = 'Golden Compasses Research Lodge';
 const SITE_DESCRIPTION = 'Advancing Masonic knowledge through research and education';
 
 /**
+ * HTML utility object with helper methods
+ */
+export const HTML = {
+  /**
+   * Escape HTML special characters to prevent XSS
+   */
+  escape(text: string): string {
+    const map: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;',
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+  },
+};
+
+/**
  * HTML Template generator
  * Creates a Response object with HTML content type
  */
-export function HTML(strings: TemplateStringsArray, ...values: any[]): Response {
+export function HTMLResponse(strings: TemplateStringsArray, ...values: any[]): Response {
   const html = String.raw(strings, ...values);
   return new Response(html, {
     headers: { 'Content-Type': 'text/html;charset=UTF-8' },
@@ -39,7 +58,7 @@ export function BasePage(title: string, content: string, currentPage: string = '
   <title>${title} - ${SITE_NAME}</title>
   <meta name="description" content="${SITE_DESCRIPTION}">
   <meta name="theme-color" content="#C2A43B">
-  <link rel="stylesheet" href="/styles.css?v=19">
+  <link rel="stylesheet" href="/styles.css?v=21">
 </head>
 <body>
   <header>

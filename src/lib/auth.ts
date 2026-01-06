@@ -30,9 +30,15 @@
  */
 
 import { Env } from './types';
+import bcrypt from 'bcryptjs';
+import { User, getUserByEmail, getUserById, updateUser } from './users';
+import { createUserSession, getSessionByToken, deleteSession } from './user-sessions';
 
 // Constants for password validation
 const MIN_PASSWORD_LENGTH = 14;
+
+// Session duration (7 days)
+const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Lodge-themed password suggestions for members
 export const PASSWORD_SUGGESTIONS = [
@@ -157,4 +163,113 @@ export async function logSecurityEvent(
   } catch (error) {
     console.error('Failed to log security event:', error);
   }
+}
+
+/**
+ * Authenticate user with email and password
+ * 
+ * @param db - D1 database instance
+ * @param email - User email
+ * @param password - Plain text password
+ * @returns User object if authenticated, null otherwise
+ */
+export async function loginUser(db: D1Database, email: string, password: string): Promise<User | null> {
+  const normalizedEmail = email.toLowerCase().trim();
+  
+  // Get user by email
+  const user = await getUserByEmail(db, normalizedEmail);
+  if (!user) {
+    return null;
+  }
+  
+  // Check if user is active
+  if (!user.is_active) {
+    return null;
+  }
+  
+  // Check if user has a password
+  if (!user.password_hash) {
+    return null;
+  }
+  
+  // Verify password
+  const passwordMatch = await bcrypt.compare(password, user.password_hash);
+  if (!passwordMatch) {
+    return null;
+  }
+  
+  return user;
+}
+
+/**
+ * Create a session for a user
+ * 
+ * @param db - D1 database instance
+ * @param userId - User ID
+ * @returns Session token
+ */
+export async function createUserSessionToken(db: D1Database, userId: string): Promise<string> {
+  const session = await createUserSession(db, userId, SESSION_DURATION_MS);
+  return session.token;
+}
+
+/**
+ * Verify a session token and return the user
+ * 
+ * @param db - D1 database instance
+ * @param token - Session token
+ * @returns User object if valid session, null otherwise
+ */
+export async function verifySession(db: D1Database, token: string): Promise<User | null> {
+  if (!token) {
+    return null;
+  }
+  
+  // Get session (checks expiration automatically)
+  const session = await getSessionByToken(db, token);
+  if (!session) {
+    return null;
+  }
+  
+  // Get user
+  const user = await getUserById(db, session.user_id);
+  if (!user || !user.is_active) {
+    return null;
+  }
+  
+  return user;
+}
+
+/**
+ * Delete user's session (logout)
+ * 
+ * @param db - D1 database instance
+ * @param token - Session token to delete
+ * @returns true if deleted successfully
+ */
+export async function deleteUserSession(db: D1Database, token: string): Promise<boolean> {
+  return await deleteSession(db, token);
+}
+
+/**
+ * Change user password
+ * 
+ * @param db - D1 database instance
+ * @param userId - User ID
+ * @param newPassword - New plain text password
+ * @returns true if successful
+ */
+export async function changeUserPassword(db: D1Database, userId: string, newPassword: string): Promise<boolean> {
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long`);
+  }
+  
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  
+  const result = await db
+    .prepare('UPDATE users SET password_hash = ?, updated_at = datetime(\'now\') WHERE id = ?')
+    .bind(passwordHash, userId)
+    .run();
+    
+  return result.success;
 }

@@ -12,6 +12,10 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   last_login DATETIME,
   is_active BOOLEAN DEFAULT 1,
+  -- Two-factor authentication fields
+  two_factor_enabled BOOLEAN DEFAULT 0,
+  two_factor_secret TEXT,
+  two_factor_grace_period_ends DATETIME,
   CHECK (role IN ('super_admin', 'admin', 'member'))
 );
 

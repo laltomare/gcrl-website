@@ -471,9 +471,9 @@ async function handleAdminRoute(
     return addSecurityHeaders(HTML`${AdminLoginPage()}`);
   }
 
-  // Admin verification
-  if (path === '/admin/verify' && request.method === 'POST') {
-    if (!checkRateLimit(ip, 3, 900000)) {
+  // Admin login with email and password
+  if (path === '/admin/login' && request.method === 'POST') {
+    if (!checkRateLimit(ip, 5, 900000)) {
       await logSecurityEvent(env, 'ADMIN_RATE_LIMIT', request, 'Multiple failed login attempts');
       return new Response(JSON.stringify({ error: 'Too many attempts. Please wait 15 minutes.' }), {
         status: 429,
@@ -493,20 +493,34 @@ async function handleAdminRoute(
         });
       }
       
-      const { password } = body;
+      const { email, password } = body;
       
-      if (!password || typeof password !== 'string') {
-        return new Response(JSON.stringify({ error: 'Password is required' }), {
+      if (!email || !password) {
+        return new Response(JSON.stringify({ error: 'Email and password are required' }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' }
         });
       }
       
-      const verification = verifyToken(password, env, true);
+      // Import authentication functions
+      const { loginUser, createUserSessionToken } = await import('./lib/auth');
+      const user = await loginUser(env.DB, email, password);
 
-      if (verification.valid) {
-        await logSecurityEvent(env, 'ADMIN_LOGIN_SUCCESS', request);
-        
+      if (user) {
+        // Check if user has admin role
+        if (user.role !== 'admin' && user.role !== 'super_admin') {
+          await logSecurityEvent(env, 'ADMIN_LOGIN_UNAUTHORIZED', request, `User: ${email}`);
+          return new Response(JSON.stringify({ error: 'Access denied. Admin access required.' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Create session token
+        const token = await createUserSessionToken(env.DB, user.id);
+
+        await logSecurityEvent(env, 'ADMIN_LOGIN_SUCCESS', request, `User: ${email}`);
+
         // Check if 2FA is enabled
         const twoFAConfig = await env.DB.prepare(
           'SELECT * FROM admin_2fa WHERE id = 1'
@@ -522,20 +536,30 @@ async function handleAdminRoute(
           });
         }
 
-        // 2FA not enabled, return token
-        return new Response(JSON.stringify({ token: password }), {
+        // 2FA not enabled, return token and user info
+        return new Response(JSON.stringify({ 
+          success: true,
+          token: token,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role
+          }
+        }), {
           headers: { 'Content-Type': 'application/json' }
         });
       } else {
-        await logSecurityEvent(env, 'ADMIN_LOGIN_FAILED', request);
-        return new Response(JSON.stringify({ error: 'Invalid password' }), {
+        await logSecurityEvent(env, 'ADMIN_LOGIN_FAILED', request, `Email: ${email}`);
+        return new Response(JSON.stringify({ error: 'Invalid email or password' }), {
           status: 401,
           headers: { 'Content-Type': 'application/json' }
         });
       }
     } catch (error) {
-      return new Response(JSON.stringify({ error: 'Invalid request' }), {
-        status: 400,
+      console.error('Login error:', error);
+      return new Response(JSON.stringify({ error: 'Login failed. Please try again.' }), {
+        status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -672,7 +696,15 @@ async function handleAdminRoute(
   // Admin API endpoint for dashboard data
   if (path === '/admin/api/data' && request.method === 'GET') {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+    if (!authHeader) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { verifySession } = await import('./lib/auth');
+    const user = await verifySession(env.DB, token);
+    
+    if (!user) {
       return new Response('Unauthorized', { status: 401 });
     }
 
@@ -693,8 +725,24 @@ async function handleAdminRoute(
   // Setup 2FA - Generate QR code and backup codes
   if (path === '/admin/setup-2fa' && request.method === 'GET') {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+    if (!authHeader) {
       return new Response('Unauthorized', { status: 401 });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { verifySession } = await import('./lib/auth');
+    const user = await verifySession(env.DB, token);
+    
+    if (!user) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    
+    // Check user role
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     // Check if 2FA is already enabled
@@ -730,7 +778,15 @@ async function handleAdminRoute(
   // Check 2FA status
   if (path === '/admin/2fa-status' && request.method === 'GET') {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+    if (!authHeader) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { verifySession } = await import('./lib/auth');
+    const user = await verifySession(env.DB, token);
+    
+    if (!user) {
       return new Response('Unauthorized', { status: 401 });
     }
 
@@ -748,8 +804,24 @@ async function handleAdminRoute(
   // Disable 2FA
   if (path === '/admin/disable-2fa' && request.method === 'POST') {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+    if (!authHeader) {
       return new Response('Unauthorized', { status: 401 });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { verifySession } = await import('./lib/auth');
+    const user = await verifySession(env.DB, token);
+    
+    if (!user) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    
+    // Check user role
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     await env.DB.prepare(
@@ -766,8 +838,24 @@ async function handleAdminRoute(
   // Enable 2FA - Verify TOTP code and save to database
   if (path === '/admin/enable-2fa' && request.method === 'POST') {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+    if (!authHeader) {
       return new Response('Unauthorized', { status: 401 });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { verifySession } = await import('./lib/auth');
+    const user = await verifySession(env.DB, token);
+    
+    if (!user) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    
+    // Check user role
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     try {
@@ -807,6 +895,42 @@ async function handleAdminRoute(
     } catch (error) {
       return new Response(JSON.stringify({ error: 'Invalid request' }), {
         status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Verify session token for dashboard
+  if (path === '/admin/verify-session' && request.method === 'POST') {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'No token provided' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Import verifySession function
+    const { verifySession } = await import('./lib/auth');
+    const user = await verifySession(env.DB, token);
+
+    if (user) {
+      return new Response(JSON.stringify({ 
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role
+        }
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } else {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -893,9 +1017,28 @@ async function handleAdminRoute(
   // Get all events (GET /admin/api/events)
   if (path === '/admin/api/events' && request.method === 'GET') {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+    if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { verifySession } = await import('./lib/auth');
+    const user = await verifySession(env.DB, token);
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Check user role
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -921,9 +1064,28 @@ async function handleAdminRoute(
   // Create event (POST /admin/api/events)
   if (path === '/admin/api/events' && request.method === 'POST') {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+    if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { verifySession } = await import('./lib/auth');
+    const user = await verifySession(env.DB, token);
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Check user role
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -972,9 +1134,28 @@ async function handleAdminRoute(
   // Update event (PATCH /admin/api/events/{id})
   if (path.startsWith('/admin/api/events/') && request.method === 'PATCH') {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+    if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { verifySession } = await import('./lib/auth');
+    const user = await verifySession(env.DB, token);
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Check user role
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -1026,9 +1207,28 @@ async function handleAdminRoute(
   // Delete event (DELETE /admin/api/events/{id})
   if (path.startsWith('/admin/api/events/') && request.method === 'DELETE') {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+    if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { verifySession } = await import('./lib/auth');
+    const user = await verifySession(env.DB, token);
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Check user role
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -1061,9 +1261,28 @@ async function handleAdminRoute(
   // Copy event (POST /admin/api/events/{id}/copy)
   if (path.startsWith('/admin/api/events/') && path.endsWith('/copy') && request.method === 'POST') {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
+    if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { verifySession } = await import('./lib/auth');
+    const user = await verifySession(env.DB, token);
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Check user role
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -1173,494 +1392,6 @@ async function handleAdminRoute(
   if (path.startsWith('/admin/users/') && path.endsWith('/sessions/delete-all') && request.method === 'POST') {
     const userId = path.split('/')[3];
     return await userRoutes.handleRevokeAllSessions(request, env, userId);
-  }
-
-  return new Response('Not found', { status: 404 });
-}
-
-// Handle document downloads
-async function handleDownload(request: Request, env: Env, path: string): Promise<Response> {
-  const ip = getClientIP(request);
-  const documentId = path.replace('/download/', '');
-
-  if (!checkRateLimit(ip, 10, 3600000)) {
-    await logSecurityEvent(env, 'DOWNLOAD_RATE_LIMIT', request, `Document: ${documentId}`);
-    return new Response(JSON.stringify({ error: 'Too many download attempts. Please try again later.' }), {
-      status: 429,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  // Check authentication
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response(JSON.stringify({ 
-      error: 'Membership required',
-      message: 'Full access available to members only',
-      loginUrl: '/join'
-    }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  const token = authHeader.replace('Bearer ', '');
-  const verification = verifyToken(token, env, false);
-
-  if (!verification.valid) {
-    await logSecurityEvent(env, 'DOWNLOAD_UNAUTHORIZED', request, `Document: ${documentId}`);
-    return new Response(JSON.stringify({ 
-      error: 'Invalid credentials',
-      message: 'Please contact the lodge secretary for access'
-    }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  // Fetch document from database
-  const doc = await env.DB.prepare(
-    'SELECT * FROM documents WHERE id = ?'
-  ).bind(documentId).first();
-
-  if (!doc) {
-    return new Response(JSON.stringify({ error: 'Document not found' }), {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  // Fetch file from R2
-  const object = await env.R2.get(doc.filename);
-  if (!object) {
-    return new Response(JSON.stringify({ error: 'File not found' }), {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  await logSecurityEvent(env, 'DOCUMENT_DOWNLOAD', request, `Document: ${doc.title}`);
-
-  return new Response(object.body, {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${doc.filename}"`
-    }
-  });
-
-  // ========================================
-  // ADMIN API: Membership Request Management
-  // ========================================
-  
-  // Update membership request status (PATCH /admin/api/requests/{id})
-  if (path.startsWith('/admin/api/requests/') && request.method === 'PATCH') {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const requestId = path.split('/').pop();
-    const { status } = await request.json();
-    
-    // Validate status
-    const validStatuses = ['pending', 'contact', 'approved', 'rejected'];
-    if (!validStatuses.includes(status)) {
-      return new Response(JSON.stringify({ error: 'Invalid status' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    try {
-      await env.DB.prepare(
-        'UPDATE membership_requests SET status = ? WHERE id = ?'
-      ).bind(status, requestId).run();
-
-      await logSecurityEvent(env, 'REQUEST_STATUS_UPDATE', request, `Request ID: ${requestId}, Status: ${status}`);
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to update request' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-  }
-
-  // Delete membership request (DELETE /admin/api/requests/{id})
-  if (path.startsWith('/admin/api/requests/') && request.method === 'DELETE') {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const requestId = path.split('/').pop();
-
-    try {
-      await env.DB.prepare(
-        'DELETE FROM membership_requests WHERE id = ?'
-      ).bind(requestId).run();
-
-      await logSecurityEvent(env, 'REQUEST_DELETE', request, `Request ID: ${requestId}`);
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to delete request' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-  }
-
-  // ========================================
-  // ADMIN API: Document Management
-  // ========================================
-  
-  // Delete document (DELETE /admin/api/documents/{id})
-  if (path.startsWith('/admin/api/documents/') && request.method === 'DELETE') {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const documentId = path.split('/').pop();
-
-    try {
-      // Get document info first
-      const doc = await env.DB.prepare(
-        'SELECT * FROM documents WHERE id = ?'
-      ).bind(documentId).first();
-
-      if (!doc) {
-        return new Response(JSON.stringify({ error: 'Document not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Delete from R2
-      await env.R2.delete(doc.filename);
-
-      // Delete from database
-      await env.DB.prepare(
-        'DELETE FROM documents WHERE id = ?'
-      ).bind(documentId).run();
-
-      await logSecurityEvent(env, 'DOCUMENT_DELETE', request, `Document: ${doc.title}`);
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to delete document' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-  }
-
-  // Upload document (POST /admin/api/documents)
-  if (path === '/admin/api/documents' && request.method === 'POST') {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    try {
-      const formData = await request.formData();
-      const file = formData.get('file') as File;
-      const title = formData.get('title') as string;
-      const description = formData.get('description') as string;
-      const category = formData.get('category') as string;
-
-      if (!file || !title) {
-        return new Response(JSON.stringify({ error: 'File and title are required' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Upload to R2
-      const filename = `${Date.now()}-${file.name}`;
-      await env.R2.put(filename, file.stream());
-
-      // Save to database
-      const result = await env.DB.prepare(
-        'INSERT INTO documents (title, description, category, filename, file_size, upload_date) VALUES (?, ?, ?, ?, ?, ?)'
-      ).bind(
-        title,
-        description || '',
-        category || '',
-        filename,
-        file.size,
-        new Date().toISOString()
-      ).run();
-
-      await logSecurityEvent(env, 'DOCUMENT_UPLOAD', request, `Document: ${title}`);
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to upload document' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-  }
-
-  // ========================================
-  // PUBLIC API: Events (Upcoming events for home page)
-  // ========================================
-  
-  // Get upcoming events (GET /api/events)
-  if (path === '/api/events' && request.method === 'GET') {
-    try {
-      const events = await env.DB.prepare(`
-        SELECT * FROM events 
-        WHERE event_date >= DATE('now')
-          AND is_published = 1
-        ORDER BY event_date ASC
-        LIMIT 3
-      `).all();
-
-      return new Response(JSON.stringify(events.results || []), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to fetch events' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-  }
-
-  // ========================================
-  // ADMIN API: Event Management
-  // ========================================
-  
-  // Get all events (GET /admin/api/events)
-  if (path === '/admin/api/events' && request.method === 'GET') {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    try {
-      // Show events from last 12 months and all future events
-      const events = await env.DB.prepare(`
-        SELECT * FROM events 
-        WHERE event_date >= DATE('now', '-12 months')
-        ORDER BY event_date DESC
-      `).all();
-
-      return new Response(JSON.stringify(events.results || []), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to fetch events' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-  }
-
-  // Create event (POST /admin/api/events)
-  if (path === '/admin/api/events' && request.method === 'POST') {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    try {
-      const data = await request.json();
-      const { title, description, event_date, start_time, end_time, location, event_url, is_published } = data;
-
-      if (!title || !event_date || !start_time || !location) {
-        return new Response(JSON.stringify({ error: 'Title, date, start time, and location are required' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Convert empty strings to null for optional fields
-      const endTimeValue = end_time && end_time.trim() !== '' ? end_time : null;
-      const eventUrlValue = event_url && event_url.trim() !== '' ? event_url : null;
-
-      const result = await env.DB.prepare(`
-        INSERT INTO events (title, description, event_date, start_time, end_time, location, event_url, is_published)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        title,
-        description || '',
-        event_date,
-        start_time,
-        endTimeValue,
-        location,
-        eventUrlValue,
-        is_published ? 1 : 0
-      ).run();
-
-      await logSecurityEvent(env, 'EVENT_CREATE', request, `Event: ${title}`);
-
-      return new Response(JSON.stringify({ success: true, id: result.meta.last_row_id }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (error: any) {
-      console.error('Error creating event:', error);
-      return new Response(JSON.stringify({ error: 'Failed to create event', details: error.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-  }
-
-  // Update event (PATCH /admin/api/events/{id})
-  if (path.startsWith('/admin/api/events/') && request.method === 'PATCH') {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const eventId = path.split('/').pop();
-
-    try {
-      const data = await request.json();
-      const { title, description, event_date, start_time, end_time, location, event_url, is_published } = data;
-
-      await env.DB.prepare(`
-        UPDATE events 
-        SET title = ?, description = ?, event_date = ?, start_time = ?, end_time = ?, location = ?, event_url = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).bind(
-        title,
-        description || '',
-        event_date,
-        start_time,
-        end_time || null,
-        location,
-        event_url || null,
-        is_published ? 1 : 0,
-        eventId
-      ).run();
-
-      await logSecurityEvent(env, 'EVENT_UPDATE', request, `Event ID: ${eventId}`);
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to update event' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-  }
-
-  // Delete event (DELETE /admin/api/events/{id})
-  if (path.startsWith('/admin/api/events/') && request.method === 'DELETE') {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const eventId = path.split('/').pop();
-
-    try {
-      await env.DB.prepare('DELETE FROM events WHERE id = ?').bind(eventId).run();
-
-      await logSecurityEvent(env, 'EVENT_DELETE', request, `Event ID: ${eventId}`);
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to delete event' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-  }
-
-  // Copy event (POST /admin/api/events/{id}/copy)
-  if (path.startsWith('/admin/api/events/') && path.endsWith('/copy') && request.method === 'POST') {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !verifyToken(authHeader.replace('Bearer ', ''), env, true).valid) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const eventId = path.split('/')[4]; // /admin/api/events/{id}/copy
-
-    try {
-      // Get original event
-      const originalEvent = await env.DB.prepare(
-        'SELECT * FROM events WHERE id = ?'
-      ).bind(eventId).first();
-
-      if (!originalEvent) {
-        return new Response(JSON.stringify({ error: 'Event not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Create copy with "(Copy)" suffix
-      const result = await env.DB.prepare(`
-        INSERT INTO events (title, description, event_date, start_time, end_time, location, event_url, is_published)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        `${originalEvent.title} (Copy)`,
-        originalEvent.description || '',
-        originalEvent.event_date,
-        originalEvent.start_time,
-        originalEvent.end_time || null,
-        originalEvent.location,
-        originalEvent.event_url || null,
-        0 // Set to draft
-      ).run();
-
-      await logSecurityEvent(env, 'EVENT_COPY', request, `Copied from Event ID: ${eventId}`);
-
-      return new Response(JSON.stringify({ success: true, id: result.meta.last_row_id }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to copy event' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
   }
 
   return new Response('Not found', { status: 404 });

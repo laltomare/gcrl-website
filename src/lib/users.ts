@@ -19,6 +19,7 @@
  * @created January 3, 2026
  */
 
+import bcrypt from 'bcryptjs';
 import { User, CreateUserInput, UpdateUserInput, UserRole, UserListOptions } from '../types';
 
 /**
@@ -26,13 +27,24 @@ import { User, CreateUserInput, UpdateUserInput, UserRole, UserListOptions } fro
  * 
  * @param db - D1 database instance
  * @param input - User creation input (email, name, optional role)
+ * @param password - Optional password (will be hashed if provided)
  * @returns The created user record
  * @throws Error if email already exists or validation fails
  */
-export async function createUser(db: D1Database, input: CreateUserInput): Promise<User> {
+export async function createUser(db: D1Database, input: CreateUserInput, password?: string): Promise<User> {
   // Validate input
   if (!input.email || !input.name) {
     throw new Error('Email and name are required');
+  }
+
+  // Validate and hash password if provided
+  let passwordHash: string | null = null;
+  if (password) {
+    if (password.length < 14) {
+      throw new Error('Password must be at least 14 characters long');
+    }
+    // Hash password with bcrypt (10 salt rounds)
+    passwordHash = await bcrypt.hash(password, 10);
   }
 
   const email = input.email.toLowerCase().trim();
@@ -58,14 +70,32 @@ export async function createUser(db: D1Database, input: CreateUserInput): Promis
     throw new Error(`User with email ${email} already exists`);
   }
 
-  // Insert user
-  const result = await db
-    .prepare(
-      `INSERT INTO users (id, email, name, role, created_at, updated_at, is_active)
-       VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), 1)`
-    )
-    .bind(id, email, name, role)
-    .run();
+  // Calculate grace period for admin/super_admin users (7 days from creation)
+  // Members don't need 2FA, so they get no grace period
+  let gracePeriodEnds = null;
+  if (role === 'admin' || role === 'super_admin') {
+    // Set grace period to 7 days from now
+    gracePeriodEnds = "datetime('now', '+7 days')";
+  }
+
+  // Insert user with 2FA grace period if applicable
+  let query: string;
+  let params: any[];
+  
+  if (passwordHash) {
+    query = `INSERT INTO users (id, email, name, role, password_hash, created_at, updated_at, is_active${gracePeriodEnds ? ', two_factor_enabled, two_factor_grace_period_ends' : ''})
+             VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'), 1${gracePeriodEnds ? ', 0, ' + gracePeriodEnds : ''})`;
+    params = [id, email, name, role, passwordHash];
+  } else {
+    query = gracePeriodEnds
+      ? `INSERT INTO users (id, email, name, role, created_at, updated_at, is_active, two_factor_enabled, two_factor_grace_period_ends)
+         VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), 1, 0, ${gracePeriodEnds})`
+      : `INSERT INTO users (id, email, name, role, created_at, updated_at, is_active, two_factor_enabled)
+         VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), 1, 0)`;
+    params = [id, email, name, role];
+  }
+  
+  const result = await db.prepare(query).bind(...params).run();
 
   if (!result.success) {
     throw new Error('Failed to create user');
@@ -90,7 +120,8 @@ export async function createUser(db: D1Database, input: CreateUserInput): Promis
 export async function getUserById(db: D1Database, id: string): Promise<User | null> {
   const result = await db
     .prepare(
-      `SELECT id, email, name, role, created_at, updated_at, last_login, is_active
+      `SELECT id, email, name, role, created_at, updated_at, last_login, is_active,
+              two_factor_enabled, two_factor_secret, two_factor_grace_period_ends, password_hash
        FROM users
        WHERE id = ?`
     )
@@ -110,6 +141,10 @@ export async function getUserById(db: D1Database, id: string): Promise<User | nu
     updated_at: result.updated_at as string,
     last_login: result.last_login as string | null,
     is_active: Boolean(result.is_active),
+    two_factor_enabled: Boolean(result.two_factor_enabled),
+    two_factor_secret: result.two_factor_secret as string | undefined,
+    two_factor_grace_period_ends: result.two_factor_grace_period_ends as string | null,
+    password_hash: result.password_hash as string | undefined,
   };
 }
 
@@ -125,7 +160,8 @@ export async function getUserByEmail(db: D1Database, email: string): Promise<Use
 
   const result = await db
     .prepare(
-      `SELECT id, email, name, role, created_at, updated_at, last_login, is_active
+      `SELECT id, email, name, role, created_at, updated_at, last_login, is_active,
+              two_factor_enabled, two_factor_secret, two_factor_grace_period_ends, password_hash
        FROM users
        WHERE email = ?`
     )
@@ -145,6 +181,10 @@ export async function getUserByEmail(db: D1Database, email: string): Promise<Use
     updated_at: result.updated_at as string,
     last_login: result.last_login as string | null,
     is_active: Boolean(result.is_active),
+    two_factor_enabled: Boolean(result.two_factor_enabled),
+    two_factor_secret: result.two_factor_secret as string | undefined,
+    two_factor_grace_period_ends: result.two_factor_grace_period_ends as string | null,
+    password_hash: result.password_hash as string | undefined,
   };
 }
 
@@ -159,7 +199,8 @@ export async function listUsers(
   db: D1Database,
   options?: UserListOptions
 ): Promise<User[]> {
-  let query = `SELECT id, email, name, role, created_at, updated_at, last_login, is_active
+  let query = `SELECT id, email, name, role, created_at, updated_at, last_login, is_active,
+               two_factor_enabled, two_factor_secret, two_factor_grace_period_ends
                FROM users
                WHERE 1=1`;
   const params: any[] = [];
@@ -205,6 +246,9 @@ export async function listUsers(
     updated_at: row.updated_at,
     last_login: row.last_login,
     is_active: Boolean(row.is_active),
+    two_factor_enabled: Boolean(row.two_factor_enabled),
+    two_factor_secret: row.two_factor_secret,
+    two_factor_grace_period_ends: row.two_factor_grace_period_ends,
   }));
 }
 

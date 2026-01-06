@@ -8,7 +8,8 @@
     "deploy": "wrangler deploy",
     "d1:create": "wrangler d1 create gcrl-documents",
     "d1:execute": "wrangler d1 execute gcrl-documents --file=./schema.sql",
-    "d1:query": "wrangler d1 execute gcrl-documents --command"
+    "d1:query": "wrangler d1 execute gcrl-documents --command",
+    "migrate-passwords": "npx tsx scripts/set-passwords.ts"
   },
   "repository": {
     "type": "git",
@@ -28,6 +29,8 @@
     "wrangler": "^4.54.0"
   },
   "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
     "otpauth": "^9.4.1"
   }
 }
