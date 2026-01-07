@@ -174,7 +174,8 @@ VALUES (
 - ✅ Test accounts: test@example.com, lawrence@altomare.org
 
 #### What Doesn't Work (Library Authentication - Phase 3 Pending)
-- ❌ Library still uses `LIBRARY_PASSWORD` environment variable (old system)
+- ❌ Library **STILL uses old `LIBRARY_PASSWORD` system** (lines 223-224 in src/index.ts)
+- ❌ Old authentication logic **still present in `src/index.ts`** (not removed during technical debt payoff)
 - ❌ No user authentication for library downloads
 - ❌ No session persistence for library members
 - ❌ Members must re-enter password for each download
