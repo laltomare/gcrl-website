@@ -11,7 +11,8 @@
     "d1:query": "wrangler d1 execute gcrl-documents --command",
     "migrate-passwords": "npx tsx scripts/set-passwords.ts",
     "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix"
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "prepare": "husky"
   },
   "repository": {
     "type": "git",
@@ -30,6 +31,7 @@
     "@typescript-eslint/eslint-plugin": "^8.52.0",
     "@typescript-eslint/parser": "^8.52.0",
     "eslint": "^9.39.2",
+    "husky": "^9.1.7",
     "typescript": "^5.9.3",
     "wrangler": "^4.54.0"
   },
