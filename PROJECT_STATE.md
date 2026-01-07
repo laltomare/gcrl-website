@@ -1,8 +1,8 @@
 # GCRL Website - Project State
 
-**Last Updated**: January 6, 2026  
-**Status**: Feature Complete - Ready for Testing  
-**Phase**: Post-Break Testing
+**Last Updated**: January 7, 2026  
+**Status**: Phase 2 Testing In Progress | Phase 3 Not Started  
+**Phase**: Phase 2 Testing (Admin Dashboard)
 
 ---
 
@@ -214,7 +214,80 @@ if (password !== env.LIBRARY_PASSWORD) {
 - New endpoint: `POST /library/login` (authenticate member)
 - Reuse login page design from `AdminLoginPage()` but branded for library
 
-**3. Update Library Pages**
+**3. Replace Current Library Interface** ⚠️ **CRITICAL**
+The current library interface (in `src/lib/pages.ts` lines 498-522) must be **completely replaced**:
+
+**Current Interface (TO BE REPLACED)**:
+```html
+<!-- OLD: Every document page shows this password form -->
+<form id="passwordForm" method="POST" action="/library/${document.id}/download">
+  <label for="password">Enter Library Password:</label>
+  <input type="password" name="password" required>
+  <button type="submit">Download Document</button>
+</form>
+```
+
+**New Interface (TO BE IMPLEMENTED)**:
+```html
+<!-- NEW: Check if user is logged in -->
+<div id="library-auth-section">
+  <!-- If NOT logged in: Show login button -->
+  <div class="login-required">
+    <h2>🔒 Member Access Required</h2>
+    <p>Please log in to download documents.</p>
+    <a href="/library/login" class="btn btn-primary">Member Login</a>
+    <p class="join-reminder">Not a member? <a href="/join">Join Golden Compasses Research Lodge</a></p>
+  </div>
+  
+  <!-- If logged in: Show download button -->
+  <div class="download-ready" style="display:none;">
+    <h2>📥 Download Document</h2>
+    <p>Click below to download this file.</p>
+    <button onclick="downloadDocument()" class="btn btn-primary">Download {title}</button>
+  </div>
+</div>
+
+<script>
+  // Check for member session on page load
+  window.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('memberToken');
+    const authSection = document.getElementById('library-auth-section');
+    
+    if (token) {
+      // Verify session with backend
+      const response = await fetch('/library/verify-session', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        // Show download button
+        document.querySelector('.download-ready').style.display = 'block';
+        document.querySelector('.login-required').style.display = 'none';
+      }
+    }
+  });
+  
+  // Download function uses session token
+  async function downloadDocument() {
+    const token = localStorage.getItem('memberToken');
+    const response = await fetch('/library/${document.id}/download', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    // Handle file download
+  }
+</script>
+```
+
+**Key Changes**:
+- ❌ **REMOVE**: Password form on every document page
+- ❌ **REMOVE`: LIBRARY_PASSWORD environment variable dependency
+- ✅ **ADD**: Member session check on page load
+- ✅ **ADD**: "Login to Download" button for non-members
+- ✅ **ADD**: Direct download button for logged-in members
+- ✅ **ADD**: Session-based download endpoint (no password per file)
+
+**4. Update Library Pages**
 - Show document metadata (author, upload date) to logged-in members
 - Hide password form for logged-in members
 - Show "Login to Download" for non-members
@@ -264,21 +337,48 @@ VALUES (
 
 ## 📋 Next Tasks (Priority Order)
 
-### High Priority (Post-Break)
-1. **Create test member user** (SQL above)
-2. **Test member login to library** (Test Case 1-2)
-3. **Test admin login to dashboard** (Test Case 3-4)
-4. **Test super admin login** (Test Case 5-6)
-5. **Test invalid login errors** (Test Case 7-13)
+### Phase 2 Testing - Admin Dashboard (HIGH PRIORITY)
+1. **Test 1: Login Page Loads** - Verify email/password fields present
+2. **Test 2: Access /admin Without Login** - Verify redirect to /admin/login (bug fix verification)
+3. **Test 4: Dashboard Functionality** - Verify document counts, user counts display
+4. **Test 5: Logout** - Verify redirect to login and localStorage cleared
+5. **Test 6: Login with Wrong Password** - Verify error message
+6. **Test 7: Login with Wrong Email** - Verify error message
+7. **Test 8: Session Persistence** - Verify login persists across refresh
+8. **Test 9: Protected Routes** - Verify /admin routes redirect to login when not authenticated
+9. **Test 10: Rate Limiting** (Optional) - Verify lockout after 5 failed attempts
+10. **Test 11: Super Admin Login** - Verify lawrence@altomare.org account works
 
-### Medium Priority
-6. **Test session management** (Test Case 14-17)
-7. **Test security features** (Test Case 18-20)
-8. **Run ESLint auto-fix** (`npm run lint:fix`)
+**Test Plan Reference**: TODO.md lines 215-356
+**Testing Approach**: TEST AND FIX - If test fails, document bug in TODO.md, fix, re-test
+
+### Phase 3 Implementation - Library Authentication (BLOCKED - Phase 2 Must Complete First)
+⚠️ **NOTE**: Library authentication is NOT YET IMPLEMENTED
+
+**Phase 3 Requirements** (see "Incomplete Features" section below):
+1. **Build Phase 3: Library Authentication System** (~1.5 hours)
+   - Create `src/routes/library.ts` (follow `src/routes/admin.ts` pattern)
+   - Create `/library/login` page (member login form)
+   - Update library pages to check for member session
+   - Show document metadata (author, date) to logged-in members
+   - Enable multi-document downloads per session (no re-authentication)
+   - Download files individually (not zipped)
+   - Remove LIBRARY_PASSWORD dependency
+
+2. **Create Test Member User** (SQL provided below)
+3. **Test Phase 3: Library Member Authentication**
+   - Test member login to library
+   - Test metadata display for logged-in members
+   - Test session persistence for downloads
+   - Test individual file downloads
+
+### Code Quality (MEDIUM PRIORITY)
+- **Run ESLint auto-fix** (`npm run lint:fix`) - 60 issues to address
+- **Status**: Deferred until after Phase 3 complete
 
 ### Low Priority
-9. **Cross-browser testing** (Safari, Chrome, Firefox)
-10. **Edge case testing** (special characters, long input, etc.)
+- **Cross-browser testing** (Safari, Chrome, Firefox)
+- **Edge case testing** (special characters, long input, etc.)
 
 ---
 
